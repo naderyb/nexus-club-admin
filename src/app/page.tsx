@@ -1,16 +1,9 @@
-// app/page.tsx
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
+// src/app/page.tsx
 export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirect to login page
-    router.push('/nx-admin/login');
-  }, [router]);
-
-  return <div className="h-screen flex items-center justify-center">Redirecting...</div>;
+  return (
+    <div className="min-h-screen flex flex-col justify-center items-center">
+      <h1 className="text-4xl mb-6 text-glow">Welcome to Nexus Club</h1>
+      <p>For admins, please go to the <a href="/nx-admin" className="text-blue-500">Login Page</a></p>
+    </div>
+  )
 }
