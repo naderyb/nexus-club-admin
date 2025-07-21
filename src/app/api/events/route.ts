@@ -151,18 +151,38 @@ export async function PUT(req: Request) {
 }
 
 // DELETE: Delete an event
-=) yh
+export async function DELETE(req: Request) {
+  try {
+    const { id } = await req.json();
+
+    if (!id) {
+      return withCORS(NextResponse.json(
+        { error: "Event ID is required" },
+        { status: 400 }
+      ));
+    }
+
+    const eventCheck = await client.query(
+      "SELECT * FROM events WHERE id = $1",
+      [id]
+    );
+
+    if (eventCheck.rowCount === 0) {
+      return withCORS(NextResponse.json({ error: "Event not found" }, { status: 404 }));
+    }
+
+    await client.query("DELETE FROM events WHERE id = $1", [id]);
+
+    return withCORS(NextResponse.json({ message: "Event deleted successfully" }));
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    return withCORS(NextResponse.json({ error: "An error occurred" }, { status: 500 }));
+  }
+}
 // OPTIONS: Handle preflight requests for CORS
 export async function OPTIONS() {
   return withCORS(NextResponse.json({ message: "CORS preflight response" }));
-}length hkg nbjul,i
-*t'dzvC XSQb
-
-c xasW
-ùkv nb;:,
-
-mùl!hj
-
+}
 
 
 
