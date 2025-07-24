@@ -7,12 +7,17 @@ import path from "path";
 import { randomUUID } from "crypto";
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "nexus",
-  password: "nader@2000",
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || "5432", 10), //do u think it's enough secure to use parseInt here and/or make the port of the db visible?
 });
+
+const dbPort = parseInt(process.env.DB_PORT || "5432", 10);
+if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
+  throw new Error("Invalid database port specified");
+}
 
 export async function GET() {
   try {
