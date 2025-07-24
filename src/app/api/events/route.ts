@@ -4,11 +4,10 @@ import fs from "fs";
 import path from "path";
 import client from "@/lib/db";
 
-export const dynamic = "force-dynamic"; // Needed for file upload
+export const dynamic = "force-dynamic"; 
 
-// 👇 Add this helper at the top of the file
 function withCORS(response: NextResponse) {
-  response.headers.set("Access-Control-Allow-Origin", "*"); // or specify domain
+  response.headers.set("Access-Control-Allow-Origin", "*"); 
   response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   return response;
@@ -153,7 +152,17 @@ export async function PUT(req: Request) {
 // DELETE: Delete an event
 export async function DELETE(req: Request) {
   try {
-    const { id } = await req.json();
+    let id: string | null = null;
+
+    // Try to get ID from JSON body
+    try {
+      const body = await req.json();
+      id = body?.id;
+    } catch {
+      // Fallback: try from query params
+      const url = new URL(req.url);
+      id = url.searchParams.get("id");
+    }
 
     if (!id) {
       return withCORS(NextResponse.json(
@@ -179,7 +188,7 @@ export async function DELETE(req: Request) {
     return withCORS(NextResponse.json({ error: "An error occurred" }, { status: 500 }));
   }
 }
-// OPTIONS: Handle preflight requests for CORS
+
 export async function OPTIONS() {
   return withCORS(NextResponse.json({ message: "CORS preflight response" }));
 }
