@@ -2,7 +2,6 @@ import { Orbitron } from "next/font/google";
 import "./globals.css";
 const orbitron = Orbitron({ subsets: ["latin"], weight: "600" });
 import { Toaster } from 'react-hot-toast'
-import { Sidebar } from "lucide-react";
 
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -19,7 +18,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-background text-white flex flex-col">
         <main className="flex-1 p-6">{children}</main>
         <Toaster position="top-left" />
-        <footer className="text-center text-glow">Nexus Club © 2025</footer>
       </div>
     </body>
     </html>
