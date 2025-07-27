@@ -1,18 +1,13 @@
 // Backend - src/app/api/projects/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
+import Client  from "@/lib/db";
 import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import "dotenv/config";
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || "5432", 10), //do u think it's enough secure to use parseInt here and/or make the port of the db visible?
-});
+
 
 const dbPort = parseInt(process.env.DB_PORT || "5432", 10);
 if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
@@ -21,7 +16,7 @@ if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
 
 export async function GET() {
   try {
-    const res = await pool.query("SELECT * FROM projects ORDER BY id DESC");
+    const res = await Client.query("SELECT * FROM projects ORDER BY id DESC");
     return NextResponse.json({ projects: res.rows }, { status: 200 });
   } catch (err) {
     console.error("GET error:", err);
@@ -92,7 +87,7 @@ export async function POST(req: NextRequest) {
       image_url,
       site_url,
     ];
-    const result = await pool.query(insertQuery, values);
+    const result = await Client.query(insertQuery, values);
 
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (err) {
@@ -176,7 +171,7 @@ export async function PUT(req: NextRequest) {
       id,
     ];
 
-    const result = await pool.query(updateQuery, values);
+    const result = await Client.query(updateQuery, values);
     console.log("Update row count:", result.rowCount);
     if (result.rowCount === 0) {
       return NextResponse.json(
@@ -210,7 +205,7 @@ export async function DELETE(req: NextRequest) {
 
     const deleteQuery = "DELETE FROM projects WHERE name = $1 RETURNING *";
     const values = [name];
-    const result = await pool.query(deleteQuery, values);
+    const result = await Client.query(deleteQuery, values);
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
