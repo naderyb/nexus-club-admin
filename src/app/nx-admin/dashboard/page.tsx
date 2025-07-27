@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   CalendarDays,
   FolderKanban,
@@ -37,6 +38,15 @@ import {
 } from "recharts";
 // import { cookies } from "next/headers";
 
+type EventType = {
+  id: number;
+  title: string;
+  date: string;
+  location: string;
+  image_urls?: string[];
+  video_url?: string;
+};
+
 // Client-side cookie utility functions
 const getCookie = (name: string): string | null => {
   if (typeof document === "undefined") return null;
@@ -70,6 +80,7 @@ const COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B"];
 
 const DashboardPage = () => {
   const [stats, setStats] = useState({ events: 0, projects: 0, members: 0 });
+  const [recentEvents, setRecentEvents] = useState<EventType[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -191,7 +202,6 @@ const DashboardPage = () => {
       }
     }
     fetchAdmin();
-
   }, [router]);
 
   const handleLogout = () => {
@@ -207,12 +217,21 @@ const DashboardPage = () => {
     async function fetchStats() {
       try {
         setLoading(true);
-        const res = await fetch("/api/dashboard-counts");
-        if (!res.ok) throw new Error("Failed to fetch dashboard stats");
-        const data = await res.json();
-        setStats(data);
+        // Fetch dashboard counts
+        const statsRes = await fetch("/api/dashboard-counts");
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+
+        // Fetch recent events
+        const eventsRes = await fetch("/api/events");
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          setRecentEvents(eventsData.slice(0, 3)); // Get only the 3 most recent events
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Dashboard fetch error:", err);
       }
       setLoading(false);
     }
@@ -322,8 +341,8 @@ const DashboardPage = () => {
             </h1>
             <p className="text-gray-400 text-sm sm:text-base">
               Welcome back{admin?.name ? `, ${admin.name}` : ""}!{" "}
-              {admin?.role ? `You are logged in as ${admin.role}.` : ""} Here&apos;s
-              what’s happening with your community.
+              {admin?.role ? `You are logged in as ${admin.role}.` : ""}{" "}
+              Here&apos;s what’s happening with your community.
             </p>
           </div>
 
@@ -493,6 +512,104 @@ const DashboardPage = () => {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          </div>
+
+          {/* Recent Events Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <CalendarDays size={24} className="text-indigo-400" />
+              Recent Events
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {loading ? (
+                // Loading skeletons
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl p-6 shadow-lg animate-pulse"
+                  >
+                    <div className="w-full h-32 bg-gray-700 rounded-lg mb-4"></div>
+                    <div className="h-4 bg-gray-700 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                ))
+              ) : recentEvents.length > 0 ? (
+                recentEvents.map((event: EventType) => (
+                  <div
+                    key={event.id}
+                    className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-indigo-500/20 hover:scale-[1.02]"
+                  >
+                    {/* Event Image */}
+                    <div className="aspect-video relative overflow-hidden">
+                      {Array.isArray(event.image_urls) &&
+                      event.image_urls.length > 0 ? (
+                        <Image
+                          src={event.image_urls[0] || "/fallback.png"}
+                          alt={event.title}
+                          width={400}
+                          height={200}
+                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                          <CalendarDays size={32} className="text-gray-600" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Event Content */}
+                    <div className="p-4">
+                      <h3
+                        className="text-lg font-bold text-white mb-2 truncate"
+                        title={event.title}
+                      >
+                        {event.title}
+                      </h3>
+                      <div className="space-y-1 mb-3">
+                        <p className="text-sm text-zinc-400 flex items-center gap-2">
+                          <CalendarDays size={14} />
+                          {new Date(event.date).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                        <p className="text-sm text-zinc-400 flex items-center gap-2">
+                          <span>📍</span>
+                          <span className="truncate">{event.location}</span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => router.push("/nx-admin/events")}
+                        className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all duration-200"
+                      >
+                        View All Events
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8">
+                  <CalendarDays
+                    size={64}
+                    className="mx-auto text-gray-600 mb-4"
+                  />
+                  <h3 className="text-xl font-semibold text-gray-400 mb-2">
+                    No events yet
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    Create your first event to get started
+                  </p>
+                  <button
+                    onClick={() => router.push("/nx-admin/events")}
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all duration-200"
+                  >
+                    Create Event
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
