@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import {
   CalendarDays,
@@ -28,6 +28,163 @@ import React from "react";
 import Image from "next/image";
 import Footer from "@/app/component/footer";
 import { AnimatePresence, motion } from "framer-motion";
+
+// Custom Calendar Component
+const CustomCalendar = ({
+  selectedDate,
+  onDateSelect,
+  onClose,
+}: {
+  selectedDate: string;
+  onDateSelect: (date: string) => void;
+  onClose: () => void;
+}) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<number | null>(
+    selectedDate ? new Date(selectedDate).getDate() : null
+  );
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+    );
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+    );
+  };
+
+  const handleDateClick = (day: number) => {
+    setSelectedDay(day);
+    const selectedDate = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+    const formattedDate = selectedDate.toISOString().split("T")[0];
+    onDateSelect(formattedDate);
+    onClose();
+  };
+
+  const renderCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(currentMonth);
+    const firstDay = getFirstDayOfMonth(currentMonth);
+    const days = [];
+
+    // Empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-10 w-10"></div>);
+    }
+
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isSelected =
+        selectedDay === day &&
+        selectedDate &&
+        new Date(selectedDate).getMonth() === currentMonth.getMonth() &&
+        new Date(selectedDate).getFullYear() === currentMonth.getFullYear();
+
+      const isToday =
+        new Date().toDateString() ===
+        new Date(
+          currentMonth.getFullYear(),
+          currentMonth.getMonth(),
+          day
+        ).toDateString();
+
+      days.push(
+        <button
+          key={day}
+          onClick={() => handleDateClick(day)}
+          className={`h-10 w-10 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-indigo-600 hover:text-white ${
+            isSelected
+              ? "bg-indigo-600 text-white shadow-lg"
+              : isToday
+              ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/50"
+              : "text-gray-300 hover:bg-gray-700"
+          }`}
+        >
+          {day}
+        </button>
+      );
+    }
+
+    return days;
+  };
+
+  return (
+    <div className="absolute top-full left-0 mt-2 z-50 bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-xl shadow-2xl p-4 backdrop-blur-sm">
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={handlePrevMonth}
+          className="p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white transition-all duration-200"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <h3 className="text-lg font-semibold text-white">
+          {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </h3>
+        <button
+          onClick={handleNextMonth}
+          className="p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white transition-all duration-200"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Days of Week */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+          <div
+            key={day}
+            className="h-8 flex items-center justify-center text-xs font-medium text-gray-400"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar Days */}
+      <div className="grid grid-cols-7 gap-1">{renderCalendarDays()}</div>
+
+      {/* Close Button */}
+      <div className="mt-4 pt-3 border-t border-gray-700">
+        <button
+          onClick={onClose}
+          className="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-all duration-200"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
 
 type Project = {
   id: number;
@@ -124,6 +281,10 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [showStartCalendar, setShowStartCalendar] = useState(false);
+  const [showEndCalendar, setShowEndCalendar] = useState(false);
+  const startCalendarRef = useRef<HTMLDivElement>(null);
+  const endCalendarRef = useRef<HTMLDivElement>(null);
 
   type ProjectFormData = {
     name: string;
@@ -182,6 +343,37 @@ export default function ProjectsPage() {
     })();
   }, []);
 
+  // Close calendar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (
+        startCalendarRef.current &&
+        !startCalendarRef.current.contains(target) &&
+        showStartCalendar
+      ) {
+        setShowStartCalendar(false);
+      }
+
+      if (
+        endCalendarRef.current &&
+        !endCalendarRef.current.contains(target) &&
+        showEndCalendar
+      ) {
+        setShowEndCalendar(false);
+      }
+    };
+
+    if (showStartCalendar || showEndCalendar) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showStartCalendar, showEndCalendar]);
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -194,6 +386,8 @@ export default function ProjectsPage() {
     });
     setEditingId(null);
     setShowForm(false);
+    setShowStartCalendar(false);
+    setShowEndCalendar(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,7 +398,17 @@ export default function ProjectsPage() {
       showToast(
         "warning",
         "Missing Fields",
-        "Please fill in all required fields."
+        "Please fill in all required fields including dates."
+      );
+      return;
+    }
+
+    // Validate that end date is after start date
+    if (new Date(end_date) <= new Date(start_date)) {
+      showToast(
+        "warning",
+        "Invalid Dates",
+        "End date must be after start date."
       );
       return;
     }
@@ -567,6 +771,68 @@ export default function ProjectsPage() {
                           <option value="inactive">Inactive</option>
                           <option value="completed">Completed</option>
                         </select>
+                      ) : type === "date" ? (
+                        <div
+                          className="relative"
+                          ref={
+                            key === "start_date"
+                              ? startCalendarRef
+                              : key === "end_date"
+                              ? endCalendarRef
+                              : null
+                          }
+                        >
+                          <div
+                            onClick={() => {
+                              if (key === "start_date") {
+                                setShowStartCalendar(!showStartCalendar);
+                                setShowEndCalendar(false);
+                              } else if (key === "end_date") {
+                                setShowEndCalendar(!showEndCalendar);
+                                setShowStartCalendar(false);
+                              }
+                            }}
+                            className="w-full p-3 bg-zinc-800 border border-gray-600 rounded-xl text-white cursor-pointer hover:border-indigo-500 transition-colors flex items-center justify-between"
+                          >
+                            <span
+                              className={
+                                formData[key as ProjectFormDataKey]
+                                  ? "text-white"
+                                  : "text-gray-400"
+                              }
+                            >
+                              {formData[key as ProjectFormDataKey]
+                                ? new Date(
+                                    formData[
+                                      key as ProjectFormDataKey
+                                    ] as string
+                                  ).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })
+                                : `Select ${label.toLowerCase()}`}
+                            </span>
+                            <CalendarDays size={18} className="text-gray-400" />
+                          </div>
+                          {((key === "start_date" && showStartCalendar) ||
+                            (key === "end_date" && showEndCalendar)) && (
+                            <CustomCalendar
+                              selectedDate={
+                                formData[key as ProjectFormDataKey] as string
+                              }
+                              onDateSelect={(date) => {
+                                setFormData({ ...formData, [key]: date });
+                                setShowStartCalendar(false);
+                                setShowEndCalendar(false);
+                              }}
+                              onClose={() => {
+                                setShowStartCalendar(false);
+                                setShowEndCalendar(false);
+                              }}
+                            />
+                          )}
+                        </div>
                       ) : (
                         <input
                           type={type}

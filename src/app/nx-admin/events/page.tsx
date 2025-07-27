@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import {
   CalendarDays,
@@ -36,6 +36,163 @@ const navItems = [
 const inputClass =
   "w-full p-3 rounded-lg bg-[#1f2937] border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400 transition-all duration-200";
 
+// Custom Calendar Component
+const CustomCalendar = ({
+  selectedDate,
+  onDateSelect,
+  onClose,
+}: {
+  selectedDate: string;
+  onDateSelect: (date: string) => void;
+  onClose: () => void;
+}) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<number | null>(
+    selectedDate ? new Date(selectedDate).getDate() : null
+  );
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+    );
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+    );
+  };
+
+  const handleDateClick = (day: number) => {
+    setSelectedDay(day);
+    const selectedDate = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+    const formattedDate = selectedDate.toISOString().split("T")[0];
+    onDateSelect(formattedDate);
+    onClose();
+  };
+
+  const renderCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(currentMonth);
+    const firstDay = getFirstDayOfMonth(currentMonth);
+    const days = [];
+
+    // Empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-10 w-10"></div>);
+    }
+
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isSelected =
+        selectedDay === day &&
+        selectedDate &&
+        new Date(selectedDate).getMonth() === currentMonth.getMonth() &&
+        new Date(selectedDate).getFullYear() === currentMonth.getFullYear();
+
+      const isToday =
+        new Date().toDateString() ===
+        new Date(
+          currentMonth.getFullYear(),
+          currentMonth.getMonth(),
+          day
+        ).toDateString();
+
+      days.push(
+        <button
+          key={day}
+          onClick={() => handleDateClick(day)}
+          className={`h-10 w-10 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-indigo-600 hover:text-white ${
+            isSelected
+              ? "bg-indigo-600 text-white shadow-lg"
+              : isToday
+              ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/50"
+              : "text-gray-300 hover:bg-gray-700"
+          }`}
+        >
+          {day}
+        </button>
+      );
+    }
+
+    return days;
+  };
+
+  return (
+    <div className="absolute top-full left-0 mt-2 z-50 bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-xl shadow-2xl p-4 backdrop-blur-sm">
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={handlePrevMonth}
+          className="p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white transition-all duration-200"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <h3 className="text-lg font-semibold text-white">
+          {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </h3>
+        <button
+          onClick={handleNextMonth}
+          className="p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white transition-all duration-200"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Days of Week */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+          <div
+            key={day}
+            className="h-8 flex items-center justify-center text-xs font-medium text-gray-400"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar Days */}
+      <div className="grid grid-cols-7 gap-1">{renderCalendarDays()}</div>
+
+      {/* Close Button */}
+      <div className="mt-4 pt-3 border-t border-gray-700">
+        <button
+          onClick={onClose}
+          className="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-all duration-200"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const EventsPage = () => {
   const [events, setEvents] = useState<EventType[]>([]);
   const [formMode, setFormMode] = useState<"add" | "edit">("add");
@@ -68,9 +225,32 @@ const EventsPage = () => {
     eventId: null as number | null,
   });
 
+  const [showCalendar, setShowCalendar] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Close calendar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        calendarRef.current &&
+        !calendarRef.current.contains(event.target as Node)
+      ) {
+        setShowCalendar(false);
+      }
+    };
+
+    if (showCalendar) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showCalendar]);
 
   const fetchEvents = async () => {
     try {
@@ -318,6 +498,52 @@ const EventsPage = () => {
                     value={form.title}
                     onChange={handleInputChange}
                     placeholder="Enter event title"
+                    required
+                    className={inputClass}
+                  />
+                </div>
+                <div className="relative" ref={calendarRef}>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Event Date *
+                  </label>
+                  <div
+                    onClick={() => setShowCalendar(!showCalendar)}
+                    className={`${inputClass} cursor-pointer flex items-center justify-between`}
+                  >
+                    <span
+                      className={form.date ? "text-white" : "text-gray-400"}
+                    >
+                      {form.date
+                        ? new Date(form.date).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
+                        : "Select event date"}
+                    </span>
+                    <CalendarDays size={18} className="text-gray-400" />
+                  </div>
+                  {showCalendar && (
+                    <CustomCalendar
+                      selectedDate={form.date}
+                      onDateSelect={(date) => {
+                        setForm({ ...form, date });
+                        setShowCalendar(false);
+                      }}
+                      onClose={() => setShowCalendar(false)}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Event Location *
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={form.location}
+                    onChange={handleInputChange}
+                    placeholder="Enter event location"
                     required
                     className={inputClass}
                   />
