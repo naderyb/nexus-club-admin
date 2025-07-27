@@ -4,12 +4,18 @@ import fs from "fs";
 import path from "path";
 import client from "@/lib/db";
 
-export const dynamic = "force-dynamic"; 
+export const dynamic = "force-dynamic";
 
 function withCORS(response: NextResponse) {
-  response.headers.set("Access-Control-Allow-Origin", "*"); 
-  response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
   return response;
 }
 
@@ -22,10 +28,9 @@ export async function GET() {
     return withCORS(NextResponse.json(result.rows));
   } catch (error) {
     console.error("GET /api/events error:", error);
-    return withCORS(NextResponse.json(
-      { error: "Failed to fetch events" },
-      { status: 500 }
-    ));
+    return withCORS(
+      NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })
+    );
   }
 }
 
@@ -37,6 +42,8 @@ export async function POST(req: Request) {
     const title = formData.get("title") as string;
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
+
+    
 
     const images = formData.getAll("images") as File[];
     const imageUrls: string[] = [];
@@ -69,16 +76,17 @@ export async function POST(req: Request) {
 
     const result = await client.query(query, values);
 
-    return withCORS(NextResponse.json({
-      message: "Event created",
-      event: result.rows[0],
-    }));
+    return withCORS(
+      NextResponse.json({
+        message: "Event created",
+        event: result.rows[0],
+      })
+    );
   } catch (error) {
     console.error("POST /api/events error:", error);
-    return withCORS(NextResponse.json(
-      { error: "Failed to create event" },
-      { status: 500 }
-    ));
+    return withCORS(
+      NextResponse.json({ error: "Failed to create event" }, { status: 500 })
+    );
   }
 }
 
@@ -92,14 +100,22 @@ export async function PUT(req: Request) {
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
 
+    if (!date || date.trim() === "") {
+      return withCORS(
+        NextResponse.json(
+          { error: "Date is required and must be valid" },
+          { status: 400 }
+        )
+      );
+    }
+
     const images = formData.getAll("images") as File[];
     let imageUrls: string[] = [];
 
     if (!id) {
-      return withCORS(NextResponse.json(
-        { error: "Event ID is required" },
-        { status: 400 }
-      ));
+      return withCORS(
+        NextResponse.json({ error: "Event ID is required" }, { status: 400 })
+      );
     }
 
     const eventCheck = await client.query(
@@ -108,7 +124,9 @@ export async function PUT(req: Request) {
     );
 
     if (eventCheck.rowCount === 0) {
-      return withCORS(NextResponse.json({ error: "Event not found" }, { status: 404 }));
+      return withCORS(
+        NextResponse.json({ error: "Event not found" }, { status: 404 })
+      );
     }
 
     if (images.length > 0) {
@@ -139,13 +157,17 @@ export async function PUT(req: Request) {
 
     const result = await client.query(query, values);
 
-    return withCORS(NextResponse.json({
-      message: "Event updated successfully",
-      event: result.rows[0],
-    }));
+    return withCORS(
+      NextResponse.json({
+        message: "Event updated successfully",
+        event: result.rows[0],
+      })
+    );
   } catch (error) {
     console.error("Error updating event:", error);
-    return withCORS(NextResponse.json({ error: "An error occurred" }, { status: 500 }));
+    return withCORS(
+      NextResponse.json({ error: "An error occurred" }, { status: 500 })
+    );
   }
 }
 
@@ -165,10 +187,9 @@ export async function DELETE(req: Request) {
     }
 
     if (!id) {
-      return withCORS(NextResponse.json(
-        { error: "Event ID is required" },
-        { status: 400 }
-      ));
+      return withCORS(
+        NextResponse.json({ error: "Event ID is required" }, { status: 400 })
+      );
     }
 
     const eventCheck = await client.query(
@@ -177,30 +198,24 @@ export async function DELETE(req: Request) {
     );
 
     if (eventCheck.rowCount === 0) {
-      return withCORS(NextResponse.json({ error: "Event not found" }, { status: 404 }));
+      return withCORS(
+        NextResponse.json({ error: "Event not found" }, { status: 404 })
+      );
     }
 
     await client.query("DELETE FROM events WHERE id = $1", [id]);
 
-    return withCORS(NextResponse.json({ message: "Event deleted successfully" }));
+    return withCORS(
+      NextResponse.json({ message: "Event deleted successfully" })
+    );
   } catch (error) {
     console.error("Error deleting event:", error);
-    return withCORS(NextResponse.json({ error: "An error occurred" }, { status: 500 }));
+    return withCORS(
+      NextResponse.json({ error: "An error occurred" }, { status: 500 })
+    );
   }
 }
 
 export async function OPTIONS() {
   return withCORS(NextResponse.json({ message: "CORS preflight response" }));
 }
-
-
-
-
-
-
-
-
-
-
-
-
