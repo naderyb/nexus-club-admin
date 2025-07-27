@@ -5,18 +5,8 @@
       "server": "localhost",
       "port": 5432,
       "driver": "PostgreSQL",
-      "name": "nexus-club",
+      "name": "nexus",
       "database": "nexus",
-      "username": "postgres",
-      "password": "nader@2000"
-    },
-    {
-      "previewLimit": 50,
-      "server": "localhost",
-      "port": 5432,
-      "driver": "PostgreSQL",
-      "name": "school",
-      "database": "ifag",
       "username": "postgres",
       "password": "nader@2000"
     }
