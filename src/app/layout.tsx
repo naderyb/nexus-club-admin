@@ -1,7 +1,6 @@
 import { Orbitron } from "next/font/google";
 import "./globals.css";
 const orbitron = Orbitron({ subsets: ["latin"], weight: "600" });
-import { Toaster } from 'react-hot-toast'
 
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -17,7 +16,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <body className={`${orbitron.className} bg-background text-white`}>
       <div className="min-h-screen bg-background text-white flex flex-col">
         <main className="flex-1 p-6">{children}</main>
-        <Toaster position="top-left" />
       </div>
     </body>
     </html>
