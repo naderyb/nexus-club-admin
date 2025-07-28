@@ -11,7 +11,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href={`https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap`} rel="stylesheet" />
       </head>
     <body className={`${orbitron.className} bg-background text-white`}>
       <div className="min-h-screen bg-background text-white flex flex-col">
