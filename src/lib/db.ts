@@ -1,24 +1,17 @@
-// src/lib/db.ts
-import { Pool } from "pg";
+import { Client } from "pg";
 
-const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "nexus",
-  password: "nader@2000",
-  port: 5432,
-  max: 20, // maximum number of connections
-  idleTimeoutMillis: 30000, // close idle connections after 30 seconds
-  connectionTimeoutMillis: 2000, // return error after 2 seconds if connection could not be established
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-pool.on("connect", () => {
-  console.log("Connected to the database");
-});
+await client.connect(); // ✅ required!
 
-pool.on("error", (err) => {
+client.on("error", (err: Error) => {
   console.error("Unexpected error on idle client", err);
   process.exit(-1);
 });
 
-export default pool;
+export default client;
