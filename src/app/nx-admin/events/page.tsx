@@ -548,37 +548,6 @@ const EventsPage = () => {
                     className={inputClass}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Event Images
-                  </label>
-                  <input
-                    type="file"
-                    name="imageFile"
-                    accept="image/*"
-                    multiple
-                    onChange={handleInputChange}
-                    className="w-full text-white file:bg-indigo-600 file:text-white file:border-none file:px-4 file:py-2 file:rounded-lg file:mr-4 file:cursor-pointer hover:file:bg-indigo-700 transition-all"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Select multiple images (PNG, JPG, JPEG)
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Event Video
-                  </label>
-                  <input
-                    type="file"
-                    name="videoFile"
-                    accept="video/*"
-                    onChange={handleInputChange}
-                    className="w-full text-white file:bg-indigo-600 file:text-white file:border-none file:px-4 file:py-2 file:rounded-lg file:mr-4 file:cursor-pointer hover:file:bg-indigo-700 transition-all"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Select a video file (MP4, MOV, AVI)
-                  </p>
-                </div>
               </div>
             </div>
 
