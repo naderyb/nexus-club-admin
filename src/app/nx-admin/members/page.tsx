@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// import Image from "next/image";
 import Link from "next/link";
 import Footer from "../../component/footer";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,8 +28,10 @@ import {
   AlertCircle,
   XCircle,
   Info,
+  GripVertical,
+  Move,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, Reorder } from "framer-motion";
 
 type Member = {
   id: number;
@@ -39,6 +40,7 @@ type Member = {
   role: string;
   profile_picture_url: string | null;
   phone: string;
+  display_order?: number;
 };
 
 type ToastType = "success" | "error" | "warning" | "info";
@@ -54,6 +56,7 @@ const roles = [
   "president",
   "vice-president",
   "general secretary",
+  "master financier", // ✅ Added new role
   "respo com",
   "respo logistics",
   "respo marketing",
@@ -71,6 +74,7 @@ const roleColors: { [key: string]: string } = {
   president: "from-red-600 to-red-700",
   "vice-president": "from-orange-600 to-orange-700",
   "general secretary": "from-blue-600 to-blue-700",
+  "master financier": "from-emerald-600 to-emerald-700", // ✅ Added color for new role
   "respo com": "from-purple-600 to-purple-700",
   "respo logistics": "from-green-600 to-green-700",
   "respo marketing": "from-pink-600 to-pink-700",
@@ -214,6 +218,103 @@ const DeletionModal = ({
   );
 };
 
+// ✅ Draggable Member Card Component
+const DraggableMemberCard = ({
+  member,
+  viewMode,
+  onEdit,
+  onDelete,
+  isDragMode,
+}: {
+  member: Member;
+  viewMode: "grid" | "list";
+  onEdit: (member: Member) => void;
+  onDelete: (member: Member) => void;
+  isDragMode: boolean;
+}) => {
+  return (
+    <Reorder.Item
+      value={member}
+      className={`bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl p-6 hover:shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 ${
+        !isDragMode ? "hover:scale-[1.02]" : ""
+      } ${isDragMode ? "cursor-grab active:cursor-grabbing" : ""}`}
+    >
+      <div
+        className={`flex ${
+          viewMode === "grid" ? "flex-col" : "flex-row"
+        } gap-4`}
+      >
+        {/* ✅ Drag Handle */}
+        {isDragMode && (
+          <div className="flex items-center justify-center">
+            <GripVertical size={20} className="text-gray-400" />
+          </div>
+        )}
+
+        <div className={`${viewMode === "grid" ? "text-center" : ""}`}>
+          <div
+            className={`relative ${
+              viewMode === "grid" ? " mx-auto" : "w-16 h-16"
+            } mb-4`}
+          ></div>
+        </div>
+
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-white -mt-6 mb-2">
+            {member.nom}
+          </h3>
+          <div
+            className={`inline-block px-3 py-1 rounded-full text-sm font-medium mb-3 bg-gradient-to-r ${
+              roleColors[member.role] || "from-gray-600 to-gray-700"
+            } text-white`}
+          >
+            {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+          </div>
+
+          <div className="space-y-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2">
+              <Mail size={16} className="text-indigo-400" />
+              <span>{member.email}</span>
+            </div>
+            {member.phone && (
+              <div className="flex items-center gap-2">
+                <Phone size={16} className="text-green-400" />
+                <span>{member.phone}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ✅ Action buttons - hide during drag mode */}
+        {!isDragMode && (
+          <div
+            className={`flex ${
+              viewMode === "grid"
+                ? "justify-center gap-2"
+                : "flex-col gap-2"
+            }`}
+          >
+            <button
+              onClick={() => onEdit(member)}
+              className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded-lg transition-all duration-200"
+              title="Edit member"
+            >
+              <Edit3 size={18} />
+            </button>
+            <button
+              onClick={() => onDelete(member)}
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
+              title="Delete member"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        )}
+      </div>
+    </Reorder.Item>
+  );
+};
+
 export default function MembersAdminPage() {
   const pathname = usePathname();
   const router = useRouter();
@@ -224,6 +325,7 @@ export default function MembersAdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isDragMode, setIsDragMode] = useState(false); // ✅ New state for drag mode
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -254,6 +356,12 @@ export default function MembersAdminPage() {
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  // ✅ Handle reordering of members
+  const handleReorder = (newOrder: Member[]) => {
+    setMembers(newOrder);
+    showToast("info", "Order Updated", "Member positions have been updated!");
   };
 
   // Filter members based on search and role filter
@@ -602,8 +710,30 @@ export default function MembersAdminPage() {
                     <EyeOff size={20} />
                   )}
                 </button>
+                {/* ✅ Drag Mode Toggle Button */}
+                <button
+                  onClick={() => setIsDragMode(!isDragMode)}
+                  className={`px-4 py-3 rounded-xl transition-colors flex items-center gap-2 ${
+                    isDragMode
+                      ? "bg-indigo-600 text-white border border-indigo-500"
+                      : "bg-gray-800 border border-gray-600 hover:bg-gray-700"
+                  }`}
+                  title="Toggle drag mode to reorder members"
+                >
+                  <Move size={20} />
+                  {isDragMode && <span className="text-sm">Exit</span>}
+                </button>
               </div>
             </div>
+            {/* ✅ Drag mode indicator */}
+            {isDragMode && (
+              <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
+                <p className="text-indigo-300 text-sm flex items-center gap-2">
+                  <GripVertical size={16} />
+                  Drag mode active - Click and drag member cards to reorder them
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Add/Edit Member Form */}
@@ -740,92 +870,117 @@ export default function MembersAdminPage() {
                 </p>
               </div>
             ) : (
-              <div
-                className={`grid gap-6 ${
-                  viewMode === "grid"
-                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-                    : "grid-cols-1"
-                }`}
-              >
-                {filteredMembers.map((member) => (
-                  <motion.div
-                    key={member.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl p-6 hover:shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 hover:scale-[1.02]"
+              /* ✅ Conditionally render draggable or static grid */
+              <>
+                {isDragMode ? (
+                  /* ✅ Draggable Reorder List */
+                  <Reorder.Group
+                    axis="y"
+                    values={filteredMembers}
+                    onReorder={handleReorder}
+                    className="space-y-4"
                   >
-                    <div
-                      className={`flex ${
-                        viewMode === "grid" ? "flex-col" : "flex-row"
-                      } gap-4`}
-                    >
-                      <div
-                        className={`${
-                          viewMode === "grid" ? "text-center" : ""
-                        }`}
+                    {filteredMembers.map((member) => (
+                      <DraggableMemberCard
+                        key={member.id}
+                        member={member}
+                        viewMode="list"
+                        onEdit={handleEdit}
+                        onDelete={openDeleteModal}
+                        isDragMode={isDragMode}
+                      />
+                    ))}
+                  </Reorder.Group>
+                ) : (
+                  /* ✅ Static Grid/List View */
+                  <div
+                    className={`grid gap-6 ${
+                      viewMode === "grid"
+                        ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                        : "grid-cols-1"
+                    }`}
+                  >
+                    {filteredMembers.map((member) => (
+                      <motion.div
+                        key={member.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl p-6 hover:shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 hover:scale-[1.02]"
                       >
                         <div
-                          className={`relative ${
-                            viewMode === "grid" ? " mx-auto" : "w-16 h-16"
-                          } mb-4`}
-                        ></div>
-                      </div>
-
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-white -mt-6 mb-2">
-                          {member.nom}
-                        </h3>
-                        <div
-                          className={`inline-block px-3 py-1 rounded-full text-sm font-medium mb-3 bg-gradient-to-r ${
-                            roleColors[member.role] ||
-                            "from-gray-600 to-gray-700"
-                          } text-white`}
+                          className={`flex ${
+                            viewMode === "grid" ? "flex-col" : "flex-row"
+                          } gap-4`}
                         >
-                          {member.role.charAt(0).toUpperCase() +
-                            member.role.slice(1)}
-                        </div>
-
-                        <div className="space-y-2 text-sm text-gray-400">
-                          <div className="flex items-center gap-2">
-                            <Mail size={16} className="text-indigo-400" />
-                            <span>{member.email}</span>
+                          <div
+                            className={`${
+                              viewMode === "grid" ? "text-center" : ""
+                            }`}
+                          >
+                            <div
+                              className={`relative ${
+                                viewMode === "grid" ? " mx-auto" : "w-16 h-16"
+                              } mb-4`}
+                            ></div>
                           </div>
-                          {member.phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone size={16} className="text-green-400" />
-                              <span>{member.phone}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
 
-                      <div
-                        className={`flex ${
-                          viewMode === "grid"
-                            ? "justify-center gap-2"
-                            : "flex-col gap-2"
-                        }`}
-                      >
-                        <button
-                          onClick={() => handleEdit(member)}
-                          className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded-lg transition-all duration-200"
-                          title="Edit member"
-                        >
-                          <Edit3 size={18} />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(member)}
-                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
-                          title="Delete member"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-white -mt-6 mb-2">
+                              {member.nom}
+                            </h3>
+                            <div
+                              className={`inline-block px-3 py-1 rounded-full text-sm font-medium mb-3 bg-gradient-to-r ${
+                                roleColors[member.role] ||
+                                "from-gray-600 to-gray-700"
+                              } text-white`}
+                            >
+                              {member.role.charAt(0).toUpperCase() +
+                                member.role.slice(1)}
+                            </div>
+
+                            <div className="space-y-2 text-sm text-gray-400">
+                              <div className="flex items-center gap-2">
+                                <Mail size={16} className="text-indigo-400" />
+                                <span>{member.email}</span>
+                              </div>
+                              {member.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone size={16} className="text-green-400" />
+                                  <span>{member.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div
+                            className={`flex ${
+                              viewMode === "grid"
+                                ? "justify-center gap-2"
+                                : "flex-col gap-2"
+                            }`}
+                          >
+                            <button
+                              onClick={() => handleEdit(member)}
+                              className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded-lg transition-all duration-200"
+                              title="Edit member"
+                            >
+                              <Edit3 size={18} />
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(member)}
+                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
+                              title="Delete member"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
