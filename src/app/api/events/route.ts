@@ -23,7 +23,7 @@ function withCORS(response: NextResponse) {
 export async function GET() {
   try {
     const result = await client.query(
-      "SELECT * FROM events ORDER BY date DESC"
+      "SELECT * FROM public.events ORDER BY date DESC"
     );
     return withCORS(NextResponse.json(result.rows));
   } catch (error) {
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     }
 
     const query = `
-      INSERT INTO events (title, date, location, image_urls)
+      INSERT INTO public.events (title, date, location, image_urls)
       VALUES ($1, $2, $3, $4)
       RETURNING *;
     `;
@@ -119,7 +119,7 @@ export async function PUT(req: Request) {
     }
 
     const eventCheck = await client.query(
-      "SELECT * FROM events WHERE id = $1",
+      "SELECT * FROM public.events WHERE id = $1",
       [id]
     );
 
@@ -148,7 +148,7 @@ export async function PUT(req: Request) {
     }
 
     const query = `
-      UPDATE events
+      UPDATE public.events
       SET title = $1, date = $2, location = $3, image_urls = $4
       WHERE id = $5
       RETURNING *;
@@ -193,7 +193,7 @@ export async function DELETE(req: Request) {
     }
 
     const eventCheck = await client.query(
-      "SELECT * FROM events WHERE id = $1",
+      "SELECT * FROM public.events WHERE id = $1",
       [id]
     );
 
@@ -203,7 +203,7 @@ export async function DELETE(req: Request) {
       );
     }
 
-    await client.query("DELETE FROM events WHERE id = $1", [id]);
+    await client.query("DELETE FROM public.events WHERE id = $1", [id]);
 
     return withCORS(
       NextResponse.json({ message: "Event deleted successfully" })
