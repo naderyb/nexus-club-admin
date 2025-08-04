@@ -329,7 +329,7 @@ COPY public.members (id, nom, email, role, profile_picture_url, phone, created_a
 25	BOUROU Myriem	bouroumyriem@gmail.com	membre marketing	/default-profile.png	0560039450	2025-07-24 14:47:24.763596	2025-07-24 14:47:24.763596
 27	ZEBBAR Farah	zebbarfarah9@gmail.com	membre rel-ex	/default-profile.png	0771552302	2025-07-24 14:49:01.540137	2025-07-24 14:49:01.540137
 28	SAHBI Nyl	sahbinyl@gmail.com	alumni	/default-profile.png	0773241531	2025-07-24 14:49:51.545314	2025-07-24 14:49:51.545314
-29	IGHIL Lyna Malak	lililina934@gmail.com	alumni	/default-profile.png	0660763505	2025-07-24 14:51:14.151132	2025-07-24 14:51:14.151132
+29	IGHIL Lyna Malak	lililrina934@gmail.com	alumni	/default-profile.png	0660763505	2025-07-24 14:51:14.151132	2025-07-24 14:51:14.151132
 26	AZZOUG Hania	azz.hania@gmail.com	membre rel-ex	/default-profile.png	0665904613	2025-07-24 14:48:04.876178	2025-07-24 14:48:04.876178
 \.
 
@@ -448,7 +448,19 @@ ALTER TABLE ONLY public.projects
 ALTER TABLE ONLY public.admin_credits
     ADD CONSTRAINT admin_credits_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.admin_roles(id);
 
+
+-- ✅ Add display_order column for member positioning (moved to end after all tables are created)
+ALTER TABLE public.members 
+ADD COLUMN IF NOT EXISTS display_order INTEGER;
+
+UPDATE public.members 
+SET display_order = id 
+WHERE display_order IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_members_display_order ON public.members(display_order);
+
+COMMENT ON COLUMN public.members.display_order IS 'Used for custom ordering of members via drag and drop interface';
+
 --
 -- PostgreSQL database dump complete
 --
-
