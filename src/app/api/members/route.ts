@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 
+// ✅ Updated valid roles array including Master Financier
+const VALID_ROLES = [
+  "president",
+  "vice-president",
+  "general secretary",
+  "master financier", // ✅ New role added
+  "respo com",
+  "respo logistics",
+  "respo marketing",
+  "respo dev",
+  "respo rel-ex",
+  "membre comm",
+  "membre logistics",
+  "membre dev",
+  "membre marketing",
+  "membre rel-ex",
+  "alumni",
+];
+
 // ✅ POST — Add a new member
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +34,14 @@ export async function POST(req: NextRequest) {
     if (!nom || !email || !role || !phone) {
       return NextResponse.json(
         { error: "All fields (nom, email, role, phone) are required" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Validate role
+    if (!VALID_ROLES.includes(role)) {
+      return NextResponse.json(
+        { error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` },
         { status: 400 }
       );
     }
@@ -35,10 +62,16 @@ export async function POST(req: NextRequest) {
       profile_picture_url = `/public/${imageFile.name}`; 
     }
 
+    // ✅ Get the next display_order value
+    const orderResult = await pool.query(
+      "SELECT COALESCE(MAX(display_order), 0) + 1 as next_order FROM members"
+    );
+    const display_order = orderResult.rows[0].next_order;
+
     const result = await pool.query(
-      `INSERT INTO members (nom, email, role, profile_picture_url, phone)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [nom, email, role, profile_picture_url, phone]
+      `INSERT INTO members (nom, email, role, profile_picture_url, phone, display_order)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [nom, email, role, profile_picture_url, phone, display_order]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
@@ -66,10 +99,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ✅ GET — Fetch all members
+// ✅ GET — Fetch all members (ordered by display_order)
 export async function GET() {
   try {
-    const result = await pool.query("SELECT * FROM members ORDER BY id ASC");
+    const result = await pool.query(
+      "SELECT * FROM public.members ORDER BY COALESCE(display_order, id) ASC"
+    );
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("❌ GET /api/members error:", err);
@@ -106,6 +141,14 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // ✅ Validate role
+    if (!VALID_ROLES.includes(role)) {
+      return NextResponse.json(
+        { error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -115,18 +158,11 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const imageFile = formData.get("profile_picture");
-    let profile_picture_url = "/default-profile.png";
-
-    if (imageFile && typeof imageFile === "object" && "name" in imageFile) {
-      profile_picture_url = `/public/${imageFile.name}`;
-    }
-
     const result = await pool.query(
-      `UPDATE members
-       SET nom = $1, email = $2, role = $3, profile_picture_url = $4, phone = $5
-       WHERE id = $6 RETURNING *`,
-      [nom, email, role, profile_picture_url, phone, id]
+      `UPDATE public.members
+       SET nom = $1, email = $2, role = $3, phone = $4
+       WHERE id = $5 RETURNING *`,
+      [nom, email, role, phone, id]
     );
 
     if (result.rows.length === 0) {
@@ -158,6 +194,38 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+// ✅ PATCH — Update member display order (for drag & drop)
+export async function PATCH(req: NextRequest) {
+  try {
+    const { memberOrders } = await req.json();
+
+    if (!Array.isArray(memberOrders)) {
+      return NextResponse.json(
+        { error: "memberOrders must be an array" },
+        { status: 400 }
+      );
+    }
+
+    // Update display_order for each member
+    const updatePromises = memberOrders.map((order: { id: number; display_order: number }) =>
+      pool.query(
+        "UPDATE public.members SET display_order = $1 WHERE id = $2",
+        [order.display_order, order.id]
+      )
+    );
+
+    await Promise.all(updatePromises);
+
+    return NextResponse.json({ message: "Member order updated successfully" });
+  } catch (err) {
+    console.error("❌ PATCH /api/members error:", err);
+    return NextResponse.json(
+      { error: "Failed to update member order" },
+      { status: 500 }
+    );
+  }
+}
+
 // ✅ DELETE — Delete a member by ID
 export async function DELETE(req: NextRequest) {
   try {
@@ -172,7 +240,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const result = await pool.query(
-      "DELETE FROM members WHERE id = $1 RETURNING *",
+      "DELETE FROM public.members WHERE id = $1 RETURNING *",
       [id]
     );
 
