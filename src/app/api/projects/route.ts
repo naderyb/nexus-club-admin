@@ -16,7 +16,7 @@ if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
 
 export async function GET() {
   try {
-    const res = await Client.query("SELECT * FROM projects ORDER BY id DESC");
+    const res = await Client.query("SELECT * FROM public.projects ORDER BY id DESC");
     return NextResponse.json({ projects: res.rows }, { status: 200 });
   } catch (err) {
     console.error("GET error:", err);
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const insertQuery = `
-      INSERT INTO projects (name, description, status, start_date, end_date, image_url, site_url)
+      INSERT INTO public.projects (name, description, status, start_date, end_date, image_url, site_url)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *;
     `;
@@ -148,7 +148,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updateQuery = `
-        UPDATE projects SET
+        UPDATE public.projects SET
         name = $1,
         description = $2,
         status = $3,
@@ -203,7 +203,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const deleteQuery = "DELETE FROM projects WHERE name = $1 RETURNING *";
+    const deleteQuery = "DELETE FROM public.projects WHERE name = $1 RETURNING *";
     const values = [name];
     const result = await Client.query(deleteQuery, values);
 
