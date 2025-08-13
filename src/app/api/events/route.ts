@@ -40,10 +40,9 @@ export async function POST(req: Request) {
     const formData = await req.formData();
 
     const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
-
-    
 
     const images = formData.getAll("images") as File[];
     const imageUrls: string[] = [];
@@ -68,11 +67,11 @@ export async function POST(req: Request) {
     }
 
     const query = `
-      INSERT INTO public.events (title, date, location, image_urls)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO public.events (title, description, date, location, image_urls)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *;
     `;
-    const values = [title, date, location, imageUrls];
+    const values = [title, description, date, location, imageUrls];
 
     const result = await client.query(query, values);
 
@@ -97,6 +96,7 @@ export async function PUT(req: Request) {
 
     const id = formData.get("id") as string;
     const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
 
@@ -149,11 +149,11 @@ export async function PUT(req: Request) {
 
     const query = `
       UPDATE public.events
-      SET title = $1, date = $2, location = $3, image_urls = $4
-      WHERE id = $5
+      SET title = $1, description = $2, date = $3, location = $4, image_urls = $5
+      WHERE id = $6
       RETURNING *;
     `;
-    const values = [title, date, location, imageUrls, id];
+    const values = [title, description, date, location, imageUrls, id];
 
     const result = await client.query(query, values);
 
