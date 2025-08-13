@@ -15,11 +15,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Image from "next/image";
 
 type EventType = {
   id: number;
   title: string;
+  description?: string;
   date: string;
   location: string;
   image_urls?: string[];
@@ -93,7 +93,11 @@ const CustomCalendar = ({
       currentMonth.getMonth(),
       day
     );
-    const formattedDate = selectedDate.toISOString().split("T")[0];
+    // Fix timezone issue by using local date formatting instead of toISOString()
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+    const dayStr = String(selectedDate.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dayStr}`;
     onDateSelect(formattedDate);
     onClose();
   };
@@ -145,7 +149,7 @@ const CustomCalendar = ({
   };
 
   return (
-    <div className="absolute top-full left-0 mt-2 z-50 bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-xl shadow-2xl p-4 backdrop-blur-sm">
+    <div className="absolute top-full left-0 mt-2 z-[9999] bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-xl shadow-2xl p-4 backdrop-blur-sm">
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-4">
         <button
@@ -214,6 +218,7 @@ const EventsPage = () => {
 
   const [form, setForm] = useState({
     title: "",
+    description: "",
     date: "",
     location: "",
     imageFile: [] as File[],
@@ -277,6 +282,7 @@ const EventsPage = () => {
   const resetForm = () => {
     setForm({
       title: "",
+      description: "",
       date: "",
       location: "",
       imageFile: [],
@@ -293,6 +299,7 @@ const EventsPage = () => {
     if (formMode === "edit") formData.append("id", String(editingId));
 
     formData.append("title", form.title);
+    formData.append("description", form.description);
     formData.append("date", form.date);
     formData.append("location", form.location);
 
@@ -326,6 +333,7 @@ const EventsPage = () => {
     setEditingId(event.id);
     setForm({
       title: event.title,
+      description: event.description || "",
       date: event.date.split("T")[0],
       location: event.location,
       imageFile: [],
@@ -502,6 +510,19 @@ const EventsPage = () => {
                     className={inputClass}
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Event Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Enter event description (optional)"
+                    rows={4}
+                    className="w-full p-3 rounded-lg bg-[#1f2937] border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400 transition-all duration-200 resize-none"
+                  />
+                </div>
                 <div className="relative" ref={calendarRef}>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
                     Event Date *
@@ -514,24 +535,40 @@ const EventsPage = () => {
                       className={form.date ? "text-white" : "text-gray-400"}
                     >
                       {form.date
-                        ? new Date(form.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })
+                        ? (() => {
+                            // Parse date without timezone conversion
+                            const dateParts = form.date.split("-");
+                            const localDate = new Date(
+                              parseInt(dateParts[0]),
+                              parseInt(dateParts[1]) - 1,
+                              parseInt(dateParts[2])
+                            );
+                            return localDate.toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            });
+                          })()
                         : "Select event date"}
                     </span>
                     <CalendarDays size={18} className="text-gray-400" />
                   </div>
                   {showCalendar && (
-                    <CustomCalendar
-                      selectedDate={form.date}
-                      onDateSelect={(date) => {
-                        setForm({ ...form, date });
-                        setShowCalendar(false);
-                      }}
-                      onClose={() => setShowCalendar(false)}
-                    />
+                    <>
+                      {/* Calendar backdrop overlay */}
+                      <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setShowCalendar(false)}
+                      />
+                      <CustomCalendar
+                        selectedDate={form.date}
+                        onDateSelect={(date) => {
+                          setForm({ ...form, date });
+                          setShowCalendar(false);
+                        }}
+                        onClose={() => setShowCalendar(false)}
+                      />
+                    </>
                   )}
                 </div>
                 <div>
@@ -610,29 +647,6 @@ const EventsPage = () => {
                     key={event.id}
                     className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-indigo-500/20 hover:scale-[1.02] hover:border-indigo-500/50"
                   >
-                    {/* Event Image */}
-                    <div className="aspect-video relative overflow-hidden">
-                      {Array.isArray(event.image_urls) &&
-                      event.image_urls.length > 0 ? (
-                        <Image
-                          src={event.image_urls[0] || "/fallback.png"}
-                          alt={event.title}
-                          width={400}
-                          height={200}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                          <CalendarDays size={32} className="text-gray-600" />
-                        </div>
-                      )}
-                      {Array.isArray(event.image_urls) &&
-                        event.image_urls.length > 1 && (
-                          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                            +{event.image_urls.length - 1}
-                          </div>
-                        )}
-                    </div>
 
                     {/* Event Content */}
                     <div className="p-5">
@@ -646,16 +660,42 @@ const EventsPage = () => {
                       <div className="space-y-2 mb-4">
                         <p className="text-sm text-zinc-400 flex items-center gap-2">
                           <CalendarDays size={14} />
-                          {new Date(event.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
+                          {(() => {
+                            // Parse date without timezone conversion
+                            const eventDate = event.date.includes("T")
+                              ? event.date.split("T")[0]
+                              : event.date;
+                            const dateParts = eventDate.split("-");
+                            const localDate = new Date(
+                              parseInt(dateParts[0]),
+                              parseInt(dateParts[1]) - 1,
+                              parseInt(dateParts[2])
+                            );
+                            return localDate.toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            });
+                          })()}
                         </p>
                         <p className="text-sm text-zinc-400 flex items-center gap-2">
                           <span>📍</span>
                           <span className="truncate">{event.location}</span>
                         </p>
+                        {event.description && (
+                          <p 
+                            className="text-sm text-zinc-300 mt-3"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
+                            {event.description}
+                          </p>
+                        )}
                       </div>
 
                       {event.video_url && (
