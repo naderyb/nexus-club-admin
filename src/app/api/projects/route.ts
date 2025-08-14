@@ -1,13 +1,12 @@
 // Backend - src/app/api/projects/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import Client  from "@/lib/db";
+import Client from "@/lib/db";
 import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
 import "dotenv/config";
-
-
 
 const dbPort = parseInt(process.env.DB_PORT || "5432", 10);
 if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
@@ -16,7 +15,9 @@ if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
 
 export async function GET() {
   try {
-    const res = await Client.query("SELECT * FROM public.projects ORDER BY id DESC");
+    const res = await Client.query(
+      "SELECT * FROM public.projects ORDER BY id DESC"
+    );
     return NextResponse.json({ projects: res.rows }, { status: 200 });
   } catch (err) {
     console.error("GET error:", err);
@@ -28,6 +29,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const form = await req.formData();
     console.log("POST form fields:", {
@@ -100,6 +107,12 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const form = await req.formData();
     const id = parseInt(form.get("id") as string, 10);
@@ -191,6 +204,12 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     // Log incoming request body
     const { name } = await req.json();
@@ -203,7 +222,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const deleteQuery = "DELETE FROM public.projects WHERE name = $1 RETURNING *";
+    const deleteQuery =
+      "DELETE FROM public.projects WHERE name = $1 RETURNING *";
     const values = [name];
     const result = await Client.query(deleteQuery, values);
 
