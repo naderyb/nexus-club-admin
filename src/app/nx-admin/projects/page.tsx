@@ -86,7 +86,11 @@ const CustomCalendar = ({
       currentMonth.getMonth(),
       day
     );
-    const formattedDate = selectedDate.toISOString().split("T")[0];
+    // Fix timezone issue by using local date formatting instead of toISOString()
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+    const dayStr = String(selectedDate.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dayStr}`;
     onDateSelect(formattedDate);
     onClose();
   };
@@ -802,15 +806,26 @@ export default function ProjectsPage() {
                               }
                             >
                               {formData[key as ProjectFormDataKey]
-                                ? new Date(
-                                    formData[
+                                ? (() => {
+                                    // Parse date without timezone conversion
+                                    const dateString = formData[
                                       key as ProjectFormDataKey
-                                    ] as string
-                                  ).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  })
+                                    ] as string;
+                                    const dateParts = dateString.split("-");
+                                    const localDate = new Date(
+                                      parseInt(dateParts[0]),
+                                      parseInt(dateParts[1]) - 1,
+                                      parseInt(dateParts[2])
+                                    );
+                                    return localDate.toLocaleDateString(
+                                      "en-US",
+                                      {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                      }
+                                    );
+                                  })()
                                 : `Select ${label.toLowerCase()}`}
                             </span>
                             <CalendarDays size={18} className="text-gray-400" />
@@ -985,13 +1000,28 @@ export default function ProjectsPage() {
                         <p className="flex items-center gap-2">
                           <CalendarDays size={14} />
                           <span>
-                            {new Date(project.start_date).toLocaleDateString(
-                              "en-GB"
-                            )}{" "}
-                            -{" "}
-                            {new Date(project.end_date).toLocaleDateString(
-                              "en-GB"
-                            )}
+                            {(() => {
+                              // Parse start date without timezone conversion
+                              const startDateParts =
+                                project.start_date.split("-");
+                              const startDate = new Date(
+                                parseInt(startDateParts[0]),
+                                parseInt(startDateParts[1]) - 1,
+                                parseInt(startDateParts[2])
+                              );
+
+                              // Parse end date without timezone conversion
+                              const endDateParts = project.end_date.split("-");
+                              const endDate = new Date(
+                                parseInt(endDateParts[0]),
+                                parseInt(endDateParts[1]) - 1,
+                                parseInt(endDateParts[2])
+                              );
+
+                              return `${startDate.toLocaleDateString(
+                                "en-GB"
+                              )} - ${endDate.toLocaleDateString("en-GB")}`;
+                            })()}
                           </span>
                         </p>
                       </div>
