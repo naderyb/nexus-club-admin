@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import client from "@/lib/db";
+import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,12 @@ export async function GET() {
 
 // POST: Create new event with multiple file uploads (images and video)
 export async function POST(req: Request) {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const formData = await req.formData();
 
@@ -91,6 +98,12 @@ export async function POST(req: Request) {
 
 // PUT: Update an event with multiple image uploads
 export async function PUT(req: Request) {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const formData = await req.formData();
 
@@ -173,6 +186,12 @@ export async function PUT(req: Request) {
 
 // DELETE: Delete an event
 export async function DELETE(req: Request) {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     let id: string | null = null;
 
