@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import client from "@/lib/db";
+import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
 
 export async function GET() {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const [eventsRes, projectsRes, membersRes] = await Promise.all([
       client.query("SELECT COUNT(*) FROM events"),
