@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
 
 // ✅ Updated valid roles array including Master Financier
 const VALID_ROLES = [
@@ -22,6 +23,12 @@ const VALID_ROLES = [
 
 // ✅ POST — Add a new member
 export async function POST(req: NextRequest) {
+  // 🔒 Authentication check
+  const { authenticated } = await authenticateAdmin();
+  if (!authenticated) {
+    return createUnauthorizedResponse("Authentication required to add members");
+  }
+
   try {
     const formData = await req.formData();
 
@@ -56,10 +63,10 @@ export async function POST(req: NextRequest) {
     }
 
     const imageFile = formData.get("profile_picture");
-    let profile_picture_url = "/default-profile.png"; 
+    let profile_picture_url = "/default-profile.png";
 
     if (imageFile && typeof imageFile === "object" && "name" in imageFile) {
-      profile_picture_url = `/public/${imageFile.name}`; 
+      profile_picture_url = `/public/${imageFile.name}`;
     }
 
     // ✅ Get the next display_order value
@@ -101,6 +108,14 @@ export async function POST(req: NextRequest) {
 
 // ✅ GET — Fetch all members (ordered by display_order)
 export async function GET() {
+  // 🔒 Authentication check
+  const { authenticated } = await authenticateAdmin();
+  if (!authenticated) {
+    return createUnauthorizedResponse(
+      "Authentication required to view members"
+    );
+  }
+
   try {
     const result = await pool.query(
       "SELECT * FROM public.members ORDER BY COALESCE(display_order, id) ASC"
@@ -117,6 +132,14 @@ export async function GET() {
 
 // ✅ PUT — Update a member
 export async function PUT(req: NextRequest) {
+  // 🔒 Authentication check
+  const { authenticated } = await authenticateAdmin();
+  if (!authenticated) {
+    return createUnauthorizedResponse(
+      "Authentication required to update members"
+    );
+  }
+
   try {
     const formData = await req.formData();
 
@@ -207,11 +230,12 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Update display_order for each member
-    const updatePromises = memberOrders.map((order: { id: number; display_order: number }) =>
-      pool.query(
-        "UPDATE public.members SET display_order = $1 WHERE id = $2",
-        [order.display_order, order.id]
-      )
+    const updatePromises = memberOrders.map(
+      (order: { id: number; display_order: number }) =>
+        pool.query(
+          "UPDATE public.members SET display_order = $1 WHERE id = $2",
+          [order.display_order, order.id]
+        )
     );
 
     await Promise.all(updatePromises);
@@ -228,6 +252,14 @@ export async function PATCH(req: NextRequest) {
 
 // ✅ DELETE — Delete a member by ID
 export async function DELETE(req: NextRequest) {
+  // 🔒 Authentication check
+  const { authenticated } = await authenticateAdmin();
+  if (!authenticated) {
+    return createUnauthorizedResponse(
+      "Authentication required to delete members"
+    );
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
