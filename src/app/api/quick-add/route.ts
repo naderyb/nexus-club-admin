@@ -1,7 +1,14 @@
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
+import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
 
 export async function GET() {
+  // Authenticate admin
+  const authResult = await authenticateAdmin();
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const [events, projects, members] = await Promise.all([
       sql`SELECT COUNT(*) FROM events;`,
@@ -16,6 +23,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Error fetching dashboard stats", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
