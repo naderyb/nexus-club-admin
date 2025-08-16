@@ -11,9 +11,9 @@ export async function GET() {
 
   try {
     const [events, projects, members] = await Promise.all([
-      sql`SELECT COUNT(*) FROM events;`,
-      sql`SELECT COUNT(*) FROM projects;`,
-      sql`SELECT COUNT(*) FROM members;`,
+      sql`SELECT COUNT(*) FROM public.events;`,
+      sql`SELECT COUNT(*) FROM public.projects;`,
+      sql`SELECT COUNT(*) FROM public.members;`,
     ]);
 
     return NextResponse.json({
