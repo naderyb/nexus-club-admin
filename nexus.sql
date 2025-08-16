@@ -248,7 +248,7 @@ CREATE TABLE public.sponsors (
     id integer NOT NULL DEFAULT nextval('public.sponsors_id_seq'::regclass),
     name character varying(255) NOT NULL,
     secteur_activite character varying(255),
-    phone character varying(20),
+    phone character varying(255),
     email character varying(255),
     contact_person character varying(255),
     contact_position character varying(255),
