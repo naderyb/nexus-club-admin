@@ -11,9 +11,9 @@ export async function GET() {
 
   try {
     const [eventsRes, projectsRes, membersRes] = await Promise.all([
-      client.query("SELECT COUNT(*) FROM events"),
-      client.query("SELECT COUNT(*) FROM projects"),
-      client.query("SELECT COUNT(*) FROM members"),
+      client.query("SELECT COUNT(*) FROM public.events"),
+      client.query("SELECT COUNT(*) FROM public.projects"),
+      client.query("SELECT COUNT(*) FROM public.members"),
     ]);
 
     const stats = {
