@@ -153,7 +153,8 @@ CREATE TABLE IF NOT EXISTS public.members (
     profile_picture_url character varying(255),
     phone character varying(20) NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    display_order integer
 );
 
 ALTER TABLE public.members OWNER TO neondb_owner;
@@ -223,33 +224,14 @@ ALTER SEQUENCE public.projects_id_seq OWNER TO neondb_owner;
 
 ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 
---
--- Name: sponsors; Type: TABLE; Schema: public; Owner: postgres
---
+-- Fix sponsors table schema
+-- Run this script to properly create the sponsors table
 
+-- Drop existing table and sequence if they exist
 DROP TABLE IF EXISTS public.sponsors CASCADE;
-
-CREATE TABLE IF NOT EXISTS public.sponsors (
-    id integer NOT NULL,
-    name character varying(255) NOT NULL,
-    secteur_activite character varying(255) NOT NULL,
-    phone character varying(20) NOT NULL,
-    email character varying(255) NOT NULL,
-    called boolean DEFAULT false,
-    comments text,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE public.sponsors OWNER TO neondb_owner;
-
-
---
--- Name: sponsors_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
 DROP SEQUENCE IF EXISTS public.sponsors_id_seq CASCADE;
 
+-- Create the sequence first
 CREATE SEQUENCE public.sponsors_id_seq
     AS integer
     START WITH 1
@@ -258,13 +240,57 @@ CREATE SEQUENCE public.sponsors_id_seq
     NO MAXVALUE
     CACHE 1;
 
+-- Set ownership
 ALTER SEQUENCE public.sponsors_id_seq OWNER TO neondb_owner;
 
---
--- Name: sponsors_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
+-- Create the sponsors table with all required fields
+CREATE TABLE public.sponsors (
+    id integer NOT NULL DEFAULT nextval('public.sponsors_id_seq'::regclass),
+    name character varying(255) NOT NULL,
+    secteur_activite character varying(255),
+    phone character varying(20),
+    email character varying(255),
+    contact_person character varying(255),
+    contact_position character varying(255),
+    called boolean DEFAULT false NOT NULL,
+    email_sent boolean DEFAULT false NOT NULL,
+    comments text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 
+-- Set table ownership
+ALTER TABLE public.sponsors OWNER TO neondb_owner;
+
+-- Set sequence ownership
 ALTER SEQUENCE public.sponsors_id_seq OWNED BY public.sponsors.id;
+
+-- Add primary key constraint
+ALTER TABLE ONLY public.sponsors
+    ADD CONSTRAINT sponsors_pkey PRIMARY KEY (id);
+
+-- Add unique constraint on email only when email is not null and not empty
+CREATE UNIQUE INDEX sponsors_email_unique ON public.sponsors(email) 
+WHERE email IS NOT NULL AND email != '';
+
+-- Create performance indexes
+CREATE INDEX idx_sponsors_called ON public.sponsors(called);
+CREATE INDEX idx_sponsors_email_sent ON public.sponsors(email_sent);
+CREATE INDEX idx_sponsors_secteur_activite ON public.sponsors(secteur_activite);
+CREATE INDEX idx_sponsors_name ON public.sponsors(name);
+CREATE INDEX idx_sponsors_contact_person ON public.sponsors(contact_person);
+CREATE INDEX idx_sponsors_created_at ON public.sponsors(created_at DESC);
+
+-- Add helpful comments
+COMMENT ON TABLE public.sponsors IS 'Table storing sponsor information and contact tracking';
+COMMENT ON COLUMN public.sponsors.contact_person IS 'Name of the contact person at the sponsor company';
+COMMENT ON COLUMN public.sponsors.contact_position IS 'Position/title of the contact person';
+COMMENT ON COLUMN public.sponsors.called IS 'Whether this sponsor has been called';
+COMMENT ON COLUMN public.sponsors.email_sent IS 'Whether an email has been sent to this sponsor';
+COMMENT ON COLUMN public.sponsors.comments IS 'Additional notes about the sponsor';
+
+-- Reset sequence to start from 1
+SELECT pg_catalog.setval('public.sponsors_id_seq', 1, false);
 
 --
 -- Name: admin_credits id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -297,12 +323,6 @@ ALTER TABLE ONLY public.members ALTER COLUMN id SET DEFAULT nextval('public.memb
 ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.projects_id_seq'::regclass);
 
 --
--- Name: sponsors id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.sponsors ALTER COLUMN id SET DEFAULT nextval('public.sponsors_id_seq'::regclass);
-
---
 -- Data for Name: admin_credits; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -333,29 +353,29 @@ COPY public.events (id, title, description, date, location, image_url, video_url
 -- Data for Name: members; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.members (id, nom, email, role, profile_picture_url, phone, created_at, updated_at) FROM stdin;
-1	youb Mahmoud nader	youb.nader@gmail.com	president	/default-profile.png	0540588987	2025-07-24 12:36:15.839344	2025-07-24 12:36:15.839344
-2	Tabbi Mohamed Kemal Seif Eddine	tabbiseif@gmail.com	vice-president	/default-profile.png	0552168954	2025-07-24 13:47:38.783555	2025-07-24 13:47:38.783555
-3	Boutaoui Selena	selenaboutaoui30@gmail.com	general secretary	/default-profile.png	0669023713	2025-07-24 13:48:39.710048	2025-07-24 13:48:39.710048
-4	Ouchaoui Sara Amilya	ouchaousarah5@gmail.com	respo com	/default-profile.png	0561467647	2025-07-24 13:49:37.863329	2025-07-24 13:49:37.863329
-5	Lekahal Massil	massillakehal8@gmail.com	respo logistics	/default-profile.png	0552111876	2025-07-24 13:52:24.720357	2025-07-24 13:52:24.720357
-7	BOUSSAA Ania-Sarah	boussaaania@gmail.com	respo marketing	/default-profile.png	0557177510	2025-07-24 13:56:58.421867	2025-07-24 13:56:58.421867
-6	HADJ SADOK Salsabyl Lyna	shadjsadok03@gmail.com	respo marketing	/default-profile.png	0549700197	2025-07-24 13:56:10.943349	2025-07-24 13:56:10.943349
-10	BOUMEHDI Rym (Lydia)	boumehdirym0@gmail.com	respo rel-ex	/default-profile.png	0791244909	2025-07-24 14:11:37.900631	2025-07-24 14:11:37.900631
-13	BEDOUD Hadil	hadilhudhud07@gmail.com	membre marketing	/default-profile.png	0672551174	2025-07-24 14:18:52.285557	2025-07-24 14:18:52.285557
-14	OTSMAN Rami	na_otsman@esi.dz	membre marketing	/default-profile.png	0553842579	2025-07-24 14:21:27.277168	2025-07-24 14:21:27.277168
-15	MOHABEDDINE Kenza	kenzamohabeddine@gmail.com	membre marketing	/default-profile.png	0781215766	2025-07-24 14:23:18.263342	2025-07-24 14:23:18.263342
-16	YACINI Wissam	wiya2005@gmail.com	membre marketing	/default-profile.png	0541264795	2025-07-24 14:24:26.157266	2025-07-24 14:24:26.157266
-17	KADRI Mohamed Racim	mohamedracimkdr02@gmail.com	membre marketing	/default-profile.png	06 67 09 23 24	2025-07-24 14:25:00.639734	2025-07-24 14:25:00.639734
-11	HADJI Sidali	ns_hadji@esi.dz	respo dev	/default-profile.png	0540026451	2025-07-24 14:12:53.151335	2025-07-24 14:12:53.151335
-22	AYADI Nedjm Eddine	nedjmo2023@gmail.com	membre logistics	/default-profile.png	0557522166	2025-07-24 14:43:26.224287	2025-07-24 14:43:26.224287
-23	riadh	no-reply@noreply.com	membre logistics	/default-profile.png	0552819913	2025-07-24 14:44:49.033541	2025-07-24 14:44:49.033541
-24	OUARZEDDINI Mohamed Rayane	mrouarzeddini@gmail.com	membre logistics	/default-profile.png	05 53 02 47 67	2025-07-24 14:45:35.695897	2025-07-24 14:45:35.695897
-25	BOUROU Myriem	bouroumyriem@gmail.com	membre marketing	/default-profile.png	0560039450	2025-07-24 14:47:24.763596	2025-07-24 14:47:24.763596
-27	ZEBBAR Farah	zebbarfarah9@gmail.com	membre rel-ex	/default-profile.png	0771552302	2025-07-24 14:49:01.540137	2025-07-24 14:49:01.540137
-28	SAHBI Nyl	sahbinyl@gmail.com	alumni	/default-profile.png	0773241531	2025-07-24 14:49:51.545314	2025-07-24 14:49:51.545314
-29	IGHIL Lyna Malak	lililrina934@gmail.com	alumni	/default-profile.png	0660763505	2025-07-24 14:51:14.151132	2025-07-24 14:51:14.151132
-26	AZZOUG Hania	azz.hania@gmail.com	membre rel-ex	/default-profile.png	0665904613	2025-07-24 14:48:04.876178	2025-07-24 14:48:04.876178
+COPY public.members (id, nom, email, role, profile_picture_url, phone, created_at, updated_at, display_order) FROM stdin;
+1	youb Mahmoud nader	youb.nader@gmail.com	president	/default-profile.png	0540588987	2025-07-24 12:36:15.839344	2025-07-24 12:36:15.839344	1
+2	Tabbi Mohamed Kemal Seif Eddine	tabbiseif@gmail.com	vice-president	/default-profile.png	0552168954	2025-07-24 13:47:38.783555	2025-07-24 13:47:38.783555	2
+3	Boutaoui Selena	selenaboutaoui30@gmail.com	general secretary	/default-profile.png	0669023713	2025-07-24 13:48:39.710048	2025-07-24 13:48:39.710048	3
+4	Ouchaoui Sara Amilya	ouchaousarah5@gmail.com	respo com	/default-profile.png	0561467647	2025-07-24 13:49:37.863329	2025-07-24 13:49:37.863329	4
+5	Lekahal Massil	massillakehal8@gmail.com	respo logistics	/default-profile.png	0552111876	2025-07-24 13:52:24.720357	2025-07-24 13:52:24.720357	5
+7	BOUSSAA Ania-Sarah	boussaaania@gmail.com	respo marketing	/default-profile.png	0557177510	2025-07-24 13:56:58.421867	2025-07-24 13:56:58.421867	7
+6	HADJ SADOK Salsabyl Lyna	shadjsadok03@gmail.com	respo marketing	/default-profile.png	0549700197	2025-07-24 13:56:10.943349	2025-07-24 13:56:10.943349	6
+10	BOUMEHDI Rym (Lydia)	boumehdirym0@gmail.com	respo rel-ex	/default-profile.png	0791244909	2025-07-24 14:11:37.900631	2025-07-24 14:11:37.900631	10
+13	BEDOUD Hadil	hadilhudhud07@gmail.com	membre marketing	/default-profile.png	0672551174	2025-07-24 14:18:52.285557	2025-07-24 14:18:52.285557	13
+14	OTSMAN Rami	na_otsman@esi.dz	membre marketing	/default-profile.png	0553842579	2025-07-24 14:21:27.277168	2025-07-24 14:21:27.277168	14
+15	MOHABEDDINE Kenza	kenzamohabeddine@gmail.com	membre marketing	/default-profile.png	0781215766	2025-07-24 14:23:18.263342	2025-07-24 14:23:18.263342	15
+16	YACINI Wissam	wiya2005@gmail.com	membre marketing	/default-profile.png	0541264795	2025-07-24 14:24:26.157266	2025-07-24 14:24:26.157266	16
+17	KADRI Mohamed Racim	mohamedracimkdr02@gmail.com	membre marketing	/default-profile.png	06 67 09 23 24	2025-07-24 14:25:00.639734	2025-07-24 14:25:00.639734	17
+11	HADJI Sidali	ns_hadji@esi.dz	respo dev	/default-profile.png	0540026451	2025-07-24 14:12:53.151335	2025-07-24 14:12:53.151335	11
+22	AYADI Nedjm Eddine	nedjmo2023@gmail.com	membre logistics	/default-profile.png	0557522166	2025-07-24 14:43:26.224287	2025-07-24 14:43:26.224287	22
+23	riadh	no-reply@noreply.com	membre logistics	/default-profile.png	0552819913	2025-07-24 14:44:49.033541	2025-07-24 14:44:49.033541	23
+24	OUARZEDDINI Mohamed Rayane	mrouarzeddini@gmail.com	membre logistics	/default-profile.png	05 53 02 47 67	2025-07-24 14:45:35.695897	2025-07-24 14:45:35.695897	24
+25	BOUROU Myriem	bouroumyriem@gmail.com	membre marketing	/default-profile.png	0560039450	2025-07-24 14:47:24.763596	2025-07-24 14:47:24.763596	25
+27	ZEBBAR Farah	zebbarfarah9@gmail.com	membre rel-ex	/default-profile.png	0771552302	2025-07-24 14:49:01.540137	2025-07-24 14:49:01.540137	27
+28	SAHBI Nyl	sahbinyl@gmail.com	alumni	/default-profile.png	0773241531	2025-07-24 14:49:51.545314	2025-07-24 14:49:51.545314	28
+29	IGHIL Lyna Malak	lililrina934@gmail.com	alumni	/default-profile.png	0660763505	2025-07-24 14:51:14.151132	2025-07-24 14:51:14.151132	29
+26	AZZOUG Hania	azz.hania@gmail.com	membre rel-ex	/default-profile.png	0665904613	2025-07-24 14:48:04.876178	2025-07-24 14:48:04.876178	26
 \.
 
 --
@@ -369,7 +389,7 @@ COPY public.projects (id, name, description, status, start_date, end_date, image
 -- Data for Name: sponsors; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.sponsors (id, name, secteur_activite, phone, email, called, comments, created_at, updated_at) FROM stdin;
+COPY public.sponsors (id, name, secteur_activite, phone, email, contact_person, contact_position, called, email_sent, comments, created_at, updated_at) FROM stdin;
 \.
 
 --
@@ -464,19 +484,10 @@ ALTER TABLE ONLY public.members
 ALTER TABLE ONLY public.projects
     ADD CONSTRAINT projects_pkey PRIMARY KEY (id);
 
---
--- Name: sponsors sponsors_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
+-- Add indexes for members
+CREATE INDEX IF NOT EXISTS idx_members_display_order ON public.members(display_order);
 
-ALTER TABLE ONLY public.sponsors
-    ADD CONSTRAINT sponsors_email_key UNIQUE (email);
-
---
--- Name: sponsors sponsors_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.sponsors
-    ADD CONSTRAINT sponsors_pkey PRIMARY KEY (id);
+COMMENT ON COLUMN public.members.display_order IS 'Used for custom ordering of members via drag and drop interface';
 
 --
 -- Name: admin_credits admin_credits_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -484,19 +495,9 @@ ALTER TABLE ONLY public.sponsors
 
 ALTER TABLE ONLY public.admin_credits
     ADD CONSTRAINT admin_credits_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.admin_roles(id);
---
--- ✅ Add display_order column for member positioning
---
-ALTER TABLE public.members 
-ADD COLUMN IF NOT EXISTS display_order INTEGER;
 
-UPDATE public.members 
-SET display_order = id 
-WHERE display_order IS NULL;
-
-CREATE INDEX IF NOT EXISTS idx_members_display_order ON public.members(display_order);
-
-COMMENT ON COLUMN public.members.display_order IS 'Used for custom ordering of members via drag and drop interface';
+-- Verify the table was created successfully
+SELECT 'Sponsors table created successfully!' as status;
 
 --
 -- PostgreSQL database dump complete
