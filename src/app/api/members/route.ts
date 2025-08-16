@@ -7,7 +7,7 @@ const VALID_ROLES = [
   "president",
   "vice-president",
   "general secretary",
-  "master financier", // ✅ New role added
+  "master financier", 
   "respo com",
   "respo logistics",
   "respo marketing",
@@ -21,7 +21,7 @@ const VALID_ROLES = [
   "alumni",
 ];
 
-// ✅ POST — Add a new member
+// POST — Add a new member
 export async function POST(req: NextRequest) {
   // 🔒 Authentication check
   const { authenticated } = await authenticateAdmin();
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Validate role
+    // Validate role
     if (!VALID_ROLES.includes(role)) {
       return NextResponse.json(
         { error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` },
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       profile_picture_url = `/public/${imageFile.name}`;
     }
 
-    // ✅ Get the next display_order value
+    // Get the next display_order value
     const orderResult = await pool.query(
       "SELECT COALESCE(MAX(display_order), 0) + 1 as next_order FROM members"
     );
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (err: unknown) {
-    console.error("❌ POST /api/members error:", err);
+    console.error("POST /api/members error:", err);
 
     // Handle specific database errors
     if (
@@ -106,9 +106,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ✅ GET — Fetch all members (ordered by display_order)
+// GET — Fetch all members (ordered by display_order)
 export async function GET() {
-  // 🔒 Authentication check
+  // Authentication check
   const { authenticated } = await authenticateAdmin();
   if (!authenticated) {
     return createUnauthorizedResponse(
@@ -122,7 +122,7 @@ export async function GET() {
     );
     return NextResponse.json(result.rows);
   } catch (err) {
-    console.error("❌ GET /api/members error:", err);
+    console.error("GET /api/members error:", err);
     return NextResponse.json(
       { error: "Failed to fetch members" },
       { status: 500 }
@@ -130,9 +130,9 @@ export async function GET() {
   }
 }
 
-// ✅ PUT — Update a member
+// PUT — Update a member
 export async function PUT(req: NextRequest) {
-  // 🔒 Authentication check
+  // Authentication check
   const { authenticated } = await authenticateAdmin();
   if (!authenticated) {
     return createUnauthorizedResponse(
@@ -164,7 +164,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // ✅ Validate role
+    // Validate role
     if (!VALID_ROLES.includes(role)) {
       return NextResponse.json(
         { error: `Invalid role. Must be one of: ${VALID_ROLES.join(", ")}` },
@@ -217,7 +217,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// ✅ PATCH — Update member display order (for drag & drop)
+// PATCH — Update member display order (for drag & drop)
 export async function PATCH(req: NextRequest) {
   try {
     const { memberOrders } = await req.json();
@@ -250,9 +250,9 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// ✅ DELETE — Delete a member by ID
+// DELETE — Delete a member by ID
 export async function DELETE(req: NextRequest) {
-  // 🔒 Authentication check
+  // Authentication check
   const { authenticated } = await authenticateAdmin();
   if (!authenticated) {
     return createUnauthorizedResponse(
