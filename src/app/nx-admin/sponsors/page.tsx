@@ -1,4 +1,3 @@
-// Enhanced Drawer component for editing ALL sponsor details including new fields
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -30,6 +29,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
 // Enhanced Types - matching your database schema with new fields
@@ -42,7 +42,6 @@ type Sponsor = {
   called: boolean;
   comments: string | null;
   created_at: string;
-  // New fields
   contact_person?: string | null;
   contact_position?: string | null;
   email_sent?: boolean;
@@ -603,9 +602,13 @@ return (
         <div className="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-700/50">
           {!collapsed && (
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-sm">N</span>
-              </div>
+              <Image
+                src="/logo-nexus.svg"
+                alt="Profile Picture"
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full"
+              />
               <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Nexus Admin
               </span>
@@ -674,9 +677,13 @@ return (
             <Menu size={20} />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">N</span>
-            </div>
+            <Image
+                src="/logo-nexus.svg"
+                alt="Profile Picture"
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full"
+              />
             <span className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Nexus Admin
             </span>
