@@ -1,3 +1,4 @@
+// Enhanced Drawer component for editing ALL sponsor details including new fields
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -21,13 +22,17 @@ import {
   Trash2,
   Check,
   Clock,
-  MessageSquare,
   AlertTriangle,
+  Filter,
+  Search,
+  Send,
+  UserCheck,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-// Types - matching your database schema
+// Enhanced Types - matching your database schema with new fields
 type Sponsor = {
   id: number;
   name: string;
@@ -37,11 +42,267 @@ type Sponsor = {
   called: boolean;
   comments: string | null;
   created_at: string;
+  // New fields
+  contact_person?: string | null;
+  contact_position?: string | null;
+  email_sent?: boolean;
 };
+
+// Filter types
+type CallFilter = "all" | "called" | "pending";
+type EmailFilter = "all" | "sent" | "not_sent";
 
 // Small UI helpers
 function clsx(...a: (string | false | null | undefined)[]) {
   return a.filter(Boolean).join(" ");
+}
+
+// EditDrawer Component
+function EditDrawer({ 
+  sponsor, 
+  onClose, 
+  onSave 
+}: { 
+  sponsor: Sponsor; 
+  onClose: () => void; 
+  onSave: (patch: Partial<Sponsor>) => Promise<void>; 
+}) {
+  const [editForm, setEditForm] = useState({
+    name: sponsor.name,
+    secteur_activite: sponsor.secteur_activite || "",
+    phone: sponsor.phone || "",
+    email: sponsor.email || "",
+    contact_person: sponsor.contact_person || "",
+    contact_position: sponsor.contact_position || "",
+    called: sponsor.called,
+    email_sent: sponsor.email_sent || false,
+    comments: sponsor.comments || "",
+  });
+
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave({
+        name: editForm.name.trim(),
+        secteur_activite: editForm.secteur_activite.trim() || null,
+        phone: editForm.phone.trim() || null,
+        email: editForm.email.trim() || null,
+        contact_person: editForm.contact_person.trim() || null,
+        contact_position: editForm.contact_position.trim() || null,
+        called: editForm.called,
+        email_sent: editForm.email_sent,
+        comments: editForm.comments.trim() || null,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white dark:bg-slate-900 shadow-2xl">
+        <div className="flex h-full flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <Edit3 size={18} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Edit Sponsor
+                </h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Update sponsor information
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Form */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Company Name
+              </label>
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Secteur d&apos;Activité
+              </label>
+              <input
+                value={editForm.secteur_activite}
+                onChange={(e) => setEditForm(prev => ({ ...prev, secteur_activite: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Contact Person
+                </label>
+                <input
+                  value={editForm.contact_person}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, contact_person: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Position
+                </label>
+                <input
+                  value={editForm.contact_position}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, contact_position: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Phone
+                </label>
+                <input
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center space-x-3">
+                  <Phone size={20} className="text-slate-600 dark:text-slate-400" />
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">Called Status</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Mark if this sponsor has been contacted</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditForm(prev => ({ ...prev, called: !prev.called }))}
+                  className={clsx(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    editForm.called ? "bg-green-500" : "bg-slate-300 dark:bg-slate-600"
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "w-5 h-5 bg-white rounded-full transition-all absolute top-0.5",
+                      editForm.called ? "left-6" : "left-0.5"
+                    )}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center space-x-3">
+                  <Send size={20} className="text-slate-600 dark:text-slate-400" />
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">Email Sent</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Mark if email has been sent to this sponsor</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditForm(prev => ({ ...prev, email_sent: !prev.email_sent }))}
+                  className={clsx(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    editForm.email_sent ? "bg-blue-500" : "bg-slate-300 dark:bg-slate-600"
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "w-5 h-5 bg-white rounded-full transition-all absolute top-0.5",
+                      editForm.email_sent ? "left-6" : "left-0.5"
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Comments
+              </label>
+              <textarea
+                value={editForm.comments}
+                onChange={(e) => setEditForm(prev => ({ ...prev, comments: e.target.value }))}
+                rows={4}
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none"
+                placeholder="Add any notes or comments about this sponsor..."
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex space-x-3">
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-3 text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !editForm.name.trim()}
+                className={clsx(
+                  "flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center space-x-2",
+                  saving || !editForm.name.trim()
+                    ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700"
+                )}
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SponsorsPage() {
@@ -50,16 +311,24 @@ export default function SponsorsPage() {
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Sponsor | null>(null);
-  const [deleteModal, setDeleteModal] = useState<Sponsor | null>(null); // Add delete modal state
+  const [deleteModal, setDeleteModal] = useState<Sponsor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Form state (create)
+  // Filter states
+  const [callFilter, setCallFilter] = useState<CallFilter>("all");
+  const [emailFilter, setEmailFilter] = useState<EmailFilter>("all");
+  const [secteurFilter, setSecteurFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Enhanced form state (create)
   const [name, setName] = useState("");
   const [secteur_activite, setSecteurActivite] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
+  const [contactPosition, setContactPosition] = useState("");
 
   const pathname = usePathname();
   const router = useRouter();
@@ -73,11 +342,52 @@ export default function SponsorsPage() {
   ];
 
   const handleLogout = () => {
-    // Clear any stored authentication data
     document.cookie =
       "nexus_administrateur=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.push("/");
   };
+
+  // Get unique sectors for filter dropdown
+  const uniqueSectors = useMemo(() => {
+    const sectors = sponsors
+      .map(s => s.secteur_activite)
+      .filter((sector): sector is string => sector !== null && sector !== undefined)
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .sort();
+    return sectors;
+  }, [sponsors]);
+
+  // Enhanced filtering logic
+  const filteredSponsors = useMemo(() => {
+    return sponsors.filter(sponsor => {
+      // Call status filter
+      if (callFilter === "called" && !sponsor.called) return false;
+      if (callFilter === "pending" && sponsor.called) return false;
+
+      // Email status filter
+      if (emailFilter === "sent" && !sponsor.email_sent) return false;
+      if (emailFilter === "not_sent" && sponsor.email_sent) return false;
+
+      // Sector filter
+      if (secteurFilter !== "all" && sponsor.secteur_activite !== secteurFilter) return false;
+
+      // Search query filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = sponsor.name.toLowerCase().includes(query);
+        const matchesSector = sponsor.secteur_activite?.toLowerCase().includes(query);
+        const matchesPerson = sponsor.contact_person?.toLowerCase().includes(query);
+        const matchesPosition = sponsor.contact_position?.toLowerCase().includes(query);
+        const matchesEmail = sponsor.email?.toLowerCase().includes(query);
+        
+        if (!matchesName && !matchesSector && !matchesPerson && !matchesPosition && !matchesEmail) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [sponsors, callFilter, emailFilter, secteurFilter, searchQuery]);
 
   // Fetch sponsors from API
   const fetchSponsors = async () => {
@@ -99,7 +409,6 @@ export default function SponsorsPage() {
     }
   };
 
-  // Load sponsors on component mount
   useEffect(() => {
     fetchSponsors();
   }, []);
@@ -109,6 +418,8 @@ export default function SponsorsPage() {
     setSecteurActivite("");
     setPhone("");
     setEmail("");
+    setContactPerson("");
+    setContactPosition("");
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -127,7 +438,10 @@ export default function SponsorsPage() {
           secteur_activite: secteur_activite.trim() || null,
           phone: phone.trim() || null,
           email: email.trim() || null,
+          contact_person: contactPerson.trim() || null,
+          contact_position: contactPosition.trim() || null,
           called: false,
+          email_sent: false,
           comments: null,
         }),
       });
@@ -149,7 +463,6 @@ export default function SponsorsPage() {
     }
   };
 
-  // Updated handleDelete to use modal confirmation
   const handleDelete = async (sponsor: Sponsor) => {
     setDeletingId(sponsor.id);
     setError(null);
@@ -165,7 +478,7 @@ export default function SponsorsPage() {
       }
 
       setSponsors((prev) => prev.filter((s) => s.id !== sponsor.id));
-      setDeleteModal(null); // Close modal on success
+      setDeleteModal(null);
       console.log(`✅ Deleted sponsor: ${sponsor.name}`);
     } catch (err) {
       console.error("❌ Error deleting sponsor:", err);
@@ -202,6 +515,32 @@ export default function SponsorsPage() {
     }
   };
 
+  const handleQuickToggleEmail = async (sponsor: Sponsor) => {
+    try {
+      const response = await fetch(`/api/sponsors?id=${sponsor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email_sent: !sponsor.email_sent,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update sponsor");
+      }
+
+      const updatedSponsor: Sponsor = await response.json();
+      setSponsors((prev) =>
+        prev.map((s) => (s.id === updatedSponsor.id ? updatedSponsor : s))
+      );
+      console.log(`✅ Updated sponsor email status: ${updatedSponsor.name}`);
+    } catch (err) {
+      console.error("❌ Error updating sponsor:", err);
+      setError(err instanceof Error ? err.message : "Failed to update sponsor");
+    }
+  };
+
   const handleUpdate = async (patch: Partial<Sponsor>) => {
     if (!editing) return;
     setError(null);
@@ -231,14 +570,20 @@ export default function SponsorsPage() {
   };
 
   const total = sponsors.length;
-  const calledCount = useMemo(
-    () => sponsors.filter((s) => s.called).length,
-    [sponsors]
-  );
+  const calledCount = useMemo(() => sponsors.filter((s) => s.called).length, [sponsors]);
+const emailSentCount = useMemo(() => sponsors.filter((s) => s.email_sent).length, [sponsors]);
 
-  return (
+return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Mobile Menu Overlay */}
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+            <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+                onClick={() => setMobileMenuOpen(false)}
+            />
+        )}
+
+        {/* Continue with existing content... */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
@@ -319,11 +664,7 @@ export default function SponsorsPage() {
       </aside>
 
       {/* Main Content */}
-      <div
-        className={`transition-all duration-300 ${
-          collapsed ? "lg:ml-20" : "lg:ml-72"
-        }`}
-      >
+      <div className={`transition-all duration-300 ${collapsed ? "lg:ml-20" : "lg:ml-72"}`}>
         {/* Mobile Header */}
         <div className="lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-700 dark:text-slate-200 p-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50">
           <button
@@ -376,6 +717,12 @@ export default function SponsorsPage() {
                       {calledCount} Called
                     </span>
                   </div>
+                  <div className="flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg">
+                    <Send size={16} className="text-blue-600" />
+                    <span className="font-medium text-blue-700 dark:text-blue-400">
+                      {emailSentCount} Emailed
+                    </span>
+                  </div>
                   <div className="flex items-center space-x-2 bg-orange-100 dark:bg-orange-900/30 px-3 py-2 rounded-lg">
                     <Clock size={16} className="text-orange-600" />
                     <span className="font-medium text-orange-700 dark:text-orange-400">
@@ -408,7 +755,7 @@ export default function SponsorsPage() {
                 <form onSubmit={handleCreate} className="p-6 space-y-6">
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                      <User size={16} />
+                      <Building2 size={16} />
                       <span>Company Name *</span>
                     </label>
                     <input
@@ -422,7 +769,7 @@ export default function SponsorsPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                      <Building2 size={16} />
+                      <Briefcase size={16} />
                       <span>Secteur d&apos;Activité</span>
                     </label>
                     <input
@@ -431,6 +778,33 @@ export default function SponsorsPage() {
                       className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                       placeholder="e.g., Technology, Energy, Banking..."
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
+                        <User size={16} />
+                        <span>Contact Person</span>
+                      </label>
+                      <input
+                        value={contactPerson}
+                        onChange={(e) => setContactPerson(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                        placeholder="Ahmed Benali"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
+                        <UserCheck size={16} />
+                        <span>Position</span>
+                      </label>
+                      <input
+                        value={contactPosition}
+                        onChange={(e) => setContactPosition(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                        placeholder="Marketing Director"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -496,583 +870,308 @@ export default function SponsorsPage() {
               </div>
             </section>
 
-            {/* List Panel */}
+            {/* List Panel with Filters */}
             <section className="lg:col-span-3">
               <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl shadow-slate-900/5">
-                <div className="p-6 border-b border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                      <Users size={18} className="text-white" />
+                <div className="p-6 border-b border-slate-200/60 dark:border-slate-700/60">
+                                      <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                        <Users size={18} className="text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                          Sponsors Directory
+                        </h2>
+                        <p className="text-slate-600 dark:text-slate-400 text-sm mt-0.5">
+                          {filteredSponsors.length} of {total} sponsors shown
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                        Sponsors Directory
-                      </h2>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm mt-0.5">
-                        {total} sponsors in database
-                      </p>
-                    </div>
+                    <button
+                      onClick={fetchSponsors}
+                      disabled={loading}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm font-medium"
+                    >
+                      <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                      <span>Refresh</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={fetchSponsors}
-                    disabled={loading}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm font-medium"
-                  >
-                    <RefreshCw
-                      size={16}
-                      className={loading ? "animate-spin" : ""}
-                    />
-                    <span>Refresh</span>
-                  </button>
-                </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  {loading ? (
-                    <div className="p-12 text-center">
-                      <RefreshCw
-                        size={32}
-                        className="animate-spin mx-auto text-slate-400 mb-4"
+                  {/* Enhanced Filters */}
+                  <div className="space-y-4">
+                    {/* Search Bar */}
+                    <div className="relative">
+                      <Search size={16} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search sponsors, contacts, sectors..."
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                       />
-                      <p className="text-slate-600 dark:text-slate-400">
-                        Loading sponsors...
-                      </p>
                     </div>
-                  ) : sponsors.length === 0 ? (
-                    <div className="p-12 text-center">
-                      <Building2
-                        size={48}
-                        className="mx-auto text-slate-300 dark:text-slate-600 mb-4"
-                      />
-                      <p className="text-slate-600 dark:text-slate-400 font-medium mb-2">
-                        No sponsors yet
-                      </p>
-                      <p className="text-slate-500 dark:text-slate-500 text-sm">
-                        Add your first sponsor using the form on the left
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="min-w-full">
-                      {sponsors.map((s, index) => (
-                        <div
-                          key={s.id}
-                          className={clsx(
-                            "p-6 border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200",
-                            index === sponsors.length - 1 && "border-b-0"
-                          )}
+
+                    {/* Filter Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Call Status Filter */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center space-x-1">
+                          <Phone size={12} />
+                          <span>Call Status</span>
+                        </label>
+                        <select
+                          value={callFilter}
+                          onChange={(e) => setCallFilter(e.target.value as CallFilter)}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-4 flex-1">
-                              <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                                <Building2
-                                  size={20}
-                                  className="text-slate-600 dark:text-slate-400"
+                          <option value="all">All Sponsors</option>
+                          <option value="called">Called</option>
+                          <option value="pending">Pending</option>
+                        </select>
+                      </div>
+
+                      {/* Email Status Filter */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center space-x-1">
+                          <Mail size={12} />
+                          <span>Email Status</span>
+                        </label>
+                        <select
+                          value={emailFilter}
+                          onChange={(e) => setEmailFilter(e.target.value as EmailFilter)}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="sent">Email Sent</option>
+                          <option value="not_sent">Not Sent</option>
+                        </select>
+                      </div>
+
+                      {/* Sector Filter */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center space-x-1">
+                          <Briefcase size={12} />
+                          <span>Sector</span>
+                        </label>
+                        <select
+                          value={secteurFilter}
+                          onChange={(e) => setSecteurFilter(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                        >
+                          <option value="all">All Sectors</option>
+                          {uniqueSectors.map((sector) => (
+                            <option key={sector} value={sector}>
+                              {sector}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Active Filters Display */}
+                    {(callFilter !== "all" || emailFilter !== "all" || secteurFilter !== "all" || searchQuery.trim()) && (
+                      <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <Filter size={14} className="text-slate-500" />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Active filters:</span>
+                        
+                        {callFilter !== "all" && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                            Call: {callFilter}
+                            <button
+                              onClick={() => setCallFilter("all")}
+                              className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        
+                        {emailFilter !== "all" && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                            Email: {emailFilter === "sent" ? "Sent" : "Not Sent"}
+                            <button
+                              onClick={() => setEmailFilter("all")}
+                              className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        
+                        {secteurFilter !== "all" && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+                            Sector: {secteurFilter}
+                            <button
+                              onClick={() => setSecteurFilter("all")}
+                              className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        
+                        {searchQuery.trim() && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                            Search: &quot;{searchQuery}&quot;
+                            <button
+                              onClick={() => setSearchQuery("")}
+                              className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        
+                        <button
+                          onClick={() => {
+                            setCallFilter("all");
+                            setEmailFilter("all");
+                            setSecteurFilter("all");
+                            setSearchQuery("");
+                          }}
+                          className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 underline ml-2"
+                        >
+                          Clear all
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                
+                                  {/* Sponsors List */}
+                                  <div className="p-6 space-y-4">
+                                    {loading ? (
+                                      <div className="flex items-center justify-center py-12">
+                                        <RefreshCw size={24} className="animate-spin text-slate-400" />
+                                      </div>
+                                    ) : filteredSponsors.length === 0 ? (
+                                      <div className="text-center py-12">
+                                        <Users size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                                        <p className="text-slate-500 dark:text-slate-400">No sponsors found</p>
+                                      </div>
+                                    ) : (
+                                      filteredSponsors.map((sponsor) => (
+                                        <div
+                                          key={sponsor.id}
+                                          className="p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50 hover:shadow-md transition-all"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <h3 className="font-semibold text-slate-900 dark:text-white">
+                                                {sponsor.name}
+                                              </h3>
+                                              {sponsor.secteur_activite && (
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                  {sponsor.secteur_activite}
+                                                </p>
+                                              )}
+                                              {sponsor.contact_person && (
+                                                <p className="text-sm text-slate-500 dark:text-slate-500">
+                                                  Contact: {sponsor.contact_person}
+                                                  {sponsor.contact_position && ` (${sponsor.contact_position})`}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                              <button
+                                                onClick={() => handleQuickToggleCall(sponsor)}
+                                                className={clsx(
+                                                  "p-2 rounded-lg transition-all",
+                                                  sponsor.called
+                                                    ? "bg-green-100 text-green-600 hover:bg-green-200"
+                                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                                )}
+                                              >
+                                                <Phone size={16} />
+                                              </button>
+                                              <button
+                                                onClick={() => handleQuickToggleEmail(sponsor)}
+                                                className={clsx(
+                                                  "p-2 rounded-lg transition-all",
+                                                  sponsor.email_sent
+                                                    ? "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                                )}
+                                              >
+                                                <Send size={16} />
+                                              </button>
+                                              <button
+                                                onClick={() => setEditing(sponsor)}
+                                                className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                                              >
+                                                <Edit3 size={16} />
+                                              </button>
+                                              <button
+                                                onClick={() => setDeleteModal(sponsor)}
+                                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-all"
+                                              >
+                                                <Trash2 size={16} />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              </section>
+                            </main>
+                
+                            {/* Edit Drawer */}
+                            {editing && (
+                              <EditDrawer
+                                sponsor={editing}
+                                onClose={() => setEditing(null)}
+                                onSave={handleUpdate}
+                              />
+                            )}
+                
+                            {/* Delete Modal */}
+                            {deleteModal && (
+                              <div className="fixed inset-0 z-50">
+                                <div
+                                  className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                                  onClick={() => setDeleteModal(null)}
                                 />
-                              </div>
-
-                              <div className="flex-1 min-w-0 space-y-3">
-                                {/* Header with name and status */}
-                                <div className="flex items-center justify-between">
-                                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
-                                    {s.name}
-                                  </h3>
-                                  <div className="flex items-center space-x-2">
-                                    <button
-                                      onClick={() => handleQuickToggleCall(s)}
-                                      className={clsx(
-                                        "inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer hover:shadow-md",
-                                        s.called
-                                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
-                                          : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50"
-                                      )}
-                                      title={
-                                        s.called
-                                          ? "Mark as pending"
-                                          : "Mark as called"
-                                      }
-                                    >
-                                      {s.called ? (
-                                        <Check size={12} />
-                                      ) : (
-                                        <Clock size={12} />
-                                      )}
-                                      <span>
-                                        {s.called ? "Called" : "Pending"}
-                                      </span>
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Details */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                  <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
-                                    <Building2 size={14} />
-                                    <span>{s.secteur_activite || "—"}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
-                                    <Phone size={14} />
-                                    <span>{s.phone || "—"}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
-                                    <Mail size={14} />
-                                    <span className="truncate">
-                                      {s.email || "—"}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Comments - Always visible when present */}
-                                {s.comments && (
-                                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-l-4 border-indigo-500">
-                                    <div className="flex items-start space-x-2">
-                                      <MessageSquare
-                                        size={14}
-                                        className="text-indigo-500 mt-0.5 flex-shrink-0"
-                                      />
-                                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                                        {s.comments}
+                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+                                  <div className="flex items-center space-x-3 mb-4">
+                                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+                                      <AlertTriangle size={20} className="text-red-600" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                                        Delete Sponsor
+                                      </h3>
+                                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                                        This action cannot be undone
                                       </p>
                                     </div>
                                   </div>
-                                )}
+                                  <p className="text-slate-700 dark:text-slate-300 mb-6">
+                                    Are you sure you want to delete{" "}
+                                    <span className="font-semibold">{deleteModal.name}</span>?
+                                  </p>
+                                  <div className="flex space-x-3">
+                                    <button
+                                      onClick={() => setDeleteModal(null)}
+                                      className="flex-1 px-4 py-2 text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(deleteModal)}
+                                      disabled={deletingId === deleteModal.id}
+                                      className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all"
+                                    >
+                                      {deletingId === deleteModal.id ? "Deleting..." : "Delete"}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
-                              <button
-                                onClick={() => setEditing(s)}
-                                className="p-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-300 dark:hover:border-indigo-600 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-                                title="Edit sponsor"
-                              >
-                                <Edit3 size={16} />
-                              </button>
-                              <button
-                                onClick={() => setDeleteModal(s)} // Updated to use modal
-                                disabled={deletingId === s.id}
-                                className={clsx(
-                                  "p-2 rounded-xl border transition-all",
-                                  deletingId === s.id
-                                    ? "border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-                                    : "border-slate-300 dark:border-slate-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-600 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-                                )}
-                                title="Delete sponsor"
-                              >
-                                {deletingId === s.id ? (
-                                  <RefreshCw
-                                    size={16}
-                                    className="animate-spin"
-                                  />
-                                ) : (
-                                  <Trash2 size={16} />
-                                )}
-                              </button>
-                            </div>
+                            )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          </main>
-        </div>
-      </div>
-
-      {/* Edit Drawer */}
-      {editing && (
-        <EditDrawer
-          sponsor={editing}
-          onClose={() => setEditing(null)}
-          onSave={async (patch) => {
-            await handleUpdate(patch);
-          }}
-        />
-      )}
-
-      {/* Delete Modal */}
-      {deleteModal && (
-        <DeleteModal
-          sponsor={deleteModal}
-          onClose={() => setDeleteModal(null)}
-          onConfirm={() => handleDelete(deleteModal)}
-          isDeleting={deletingId === deleteModal.id}
-        />
-      )}
-    </div>
-  );
-}
-
-// Delete Modal Component
-function DeleteModal({
-  sponsor,
-  onClose,
-  onConfirm,
-  isDeleting,
-}: {
-  sponsor: Sponsor;
-  onClose: () => void;
-  onConfirm: () => void;
-  isDeleting: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 w-full max-w-md mx-4 transform transition-all">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <AlertTriangle size={24} className="text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Delete Sponsor
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm mt-0.5">
-                This action cannot be undone
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-            <p className="text-sm text-slate-700 dark:text-slate-300">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-red-600 dark:text-red-400">
-                {sponsor.name}
-              </span>
-              ?
-            </p>
-            {sponsor.comments && (
-              <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
-                This sponsor has call notes that will also be permanently
-                deleted.
-              </p>
-            )}
-          </div>
-
-          {/* Sponsor Details Preview */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-xl flex items-center justify-center">
-                <Building2
-                  size={18}
-                  className="text-slate-600 dark:text-slate-400"
-                />
-              </div>
-              <div>
-                <h4 className="font-medium text-slate-900 dark:text-white">
-                  {sponsor.name}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-500">
-                  {sponsor.secteur_activite || "No sector specified"}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-400">
-              <div className="flex items-center space-x-1">
-                <Phone size={12} />
-                <span>{sponsor.phone || "—"}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Mail size={12} />
-                <span className="truncate">{sponsor.email || "—"}</span>
-              </div>
-            </div>
-
-            <div className="mt-2 flex items-center space-x-2">
-              <div
-                className={clsx(
-                  "inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
-                  sponsor.called
-                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                    : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
-                )}
-              >
-                {sponsor.called ? <Check size={10} /> : <Clock size={10} />}
-                <span>{sponsor.called ? "Called" : "Pending"}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="p-6 border-t border-slate-200/50 dark:border-slate-700/50 flex space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isDeleting}
-            className="flex-1 rounded-xl px-4 py-3 text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className={clsx(
-              "flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 flex items-center justify-center space-x-2",
-              isDeleting
-                ? "bg-red-400 text-white cursor-not-allowed"
-                : "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30"
-            )}
-          >
-            {isDeleting ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" />
-                <span>Deleting...</span>
-              </>
-            ) : (
-              <>
-                <Trash2 size={16} />
-                <span>Delete Sponsor</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Enhanced Drawer component for editing ALL sponsor details
-function EditDrawer({
-  sponsor,
-  onClose,
-  onSave,
-}: {
-  sponsor: Sponsor;
-  onClose: () => void;
-  onSave: (patch: Partial<Sponsor>) => Promise<void>;
-}) {
-  // All editable fields
-  const [name, setName] = useState<string>(sponsor.name);
-  const [secteurActivite, setSecteurActivite] = useState<string>(
-    sponsor.secteur_activite || ""
-  );
-  const [phone, setPhone] = useState<string>(sponsor.phone || "");
-  const [email, setEmail] = useState<string>(sponsor.email || "");
-  const [called, setCalled] = useState<boolean>(sponsor.called);
-  const [comments, setComments] = useState<string>(sponsor.comments || "");
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-
-    await onSave({
-      name: name.trim(),
-      secteur_activite: secteurActivite.trim() || null,
-      phone: phone.trim() || null,
-      email: email.trim() || null,
-      called,
-      comments: comments.trim() || null,
-    });
-
-    setSaving(false);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50">
-      {/* backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      {/* panel */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl border-l border-slate-200/50 dark:border-slate-700/50 overflow-y-auto">
-        <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Edit3 size={18} className="text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Edit Sponsor
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm mt-0.5">
-                Update sponsor information and call status
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-all"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">
-              Company Information
-            </h4>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                <User size={16} />
-                <span>Company Name *</span>
-              </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                placeholder="Company name"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                <Building2 size={16} />
-                <span>Secteur d&apos;Activité</span>
-              </label>
-              <input
-                value={secteurActivite}
-                onChange={(e) => setSecteurActivite(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                placeholder="e.g., Technology, Energy, Banking..."
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                  <Phone size={16} />
-                  <span>Phone Number</span>
-                </label>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="+213 555 123 456"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                  <Mail size={16} />
-                  <span>Email Address</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  placeholder="contact@company.dz"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Call Status */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">
-              Contact Status
-            </h4>
-
-            <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
-              <div className="space-y-1">
-                <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
-                  <Phone size={16} />
-                  <span>Contact Status</span>
-                </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">
-                  Mark if the sponsor has been contacted
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCalled((v) => !v)}
-                className={clsx(
-                  "relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 border-2",
-                  called
-                    ? "bg-gradient-to-r from-green-500 to-emerald-600 border-green-500 shadow-lg shadow-green-500/25"
-                    : "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600"
-                )}
-              >
-                <span
-                  className={clsx(
-                    "inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-200",
-                    called ? "translate-x-5" : "translate-x-1"
-                  )}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Comments */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">
-              Notes & Comments
-            </h4>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                <MessageSquare size={16} />
-                <span>Call Notes & Comments</span>
-              </label>
-              <textarea
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={8}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none"
-                placeholder="Record call details, sponsor feedback, next steps, meeting schedules, or any relevant information..."
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-500">
-                Document important details from your conversation with the
-                sponsor
-              </p>
-            </div>
-          </div>
-
-          <div className="flex space-x-3 pt-4 sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 -mx-6 px-6 pb-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl px-6 py-3 text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !name.trim()}
-              className={clsx(
-                "flex-1 rounded-xl px-6 py-3 text-sm font-semibold transition-all duration-200 flex items-center justify-center space-x-2",
-                saving || !name.trim()
-                  ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed"
-                  : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30"
-              )}
-            >
-              {saving ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Check size={16} />
-                  <span>Save Changes</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+                      </div>
+                    );
+                  }
