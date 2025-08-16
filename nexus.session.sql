@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS public.admin_credits (
     role_id integer
 );
 
-
 ALTER TABLE public.admin_credits OWNER TO neondb_owner;
 
 --
@@ -53,7 +52,6 @@ CREATE SEQUENCE public.admin_credits_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.admin_credits_id_seq OWNER TO neondb_owner;
 
 --
@@ -61,7 +59,6 @@ ALTER SEQUENCE public.admin_credits_id_seq OWNER TO neondb_owner;
 --
 
 ALTER SEQUENCE public.admin_credits_id_seq OWNED BY public.admin_credits.id;
-
 
 --
 -- Name: admin_roles; Type: TABLE; Schema: public; Owner: postgres
@@ -74,7 +71,6 @@ CREATE TABLE IF NOT EXISTS public.admin_roles (
     role_name character varying(50) NOT NULL,
     description text
 );
-
 
 ALTER TABLE public.admin_roles OWNER TO neondb_owner;
 
@@ -92,7 +88,6 @@ CREATE SEQUENCE public.admin_roles_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.admin_roles_id_seq OWNER TO neondb_owner;
 
 --
@@ -100,7 +95,6 @@ ALTER SEQUENCE public.admin_roles_id_seq OWNER TO neondb_owner;
 --
 
 ALTER SEQUENCE public.admin_roles_id_seq OWNED BY public.admin_roles.id;
-
 
 --
 -- Name: events; Type: TABLE; Schema: public; Owner: postgres
@@ -121,7 +115,6 @@ CREATE TABLE IF NOT EXISTS public.events (
     image_urls text[]
 );
 
-
 ALTER TABLE public.events OWNER TO neondb_owner;
 
 --
@@ -138,7 +131,6 @@ CREATE SEQUENCE public.events_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.events_id_seq OWNER TO neondb_owner;
 
 --
@@ -146,7 +138,6 @@ ALTER SEQUENCE public.events_id_seq OWNER TO neondb_owner;
 --
 
 ALTER SEQUENCE public.events_id_seq OWNED BY public.events.id;
-
 
 --
 -- Name: members; Type: TABLE; Schema: public; Owner: postgres
@@ -165,7 +156,6 @@ CREATE TABLE IF NOT EXISTS public.members (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
 ALTER TABLE public.members OWNER TO neondb_owner;
 
 --
@@ -182,7 +172,6 @@ CREATE SEQUENCE public.members_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.members_id_seq OWNER TO neondb_owner;
 
 --
@@ -190,7 +179,6 @@ ALTER SEQUENCE public.members_id_seq OWNER TO neondb_owner;
 --
 
 ALTER SEQUENCE public.members_id_seq OWNED BY public.members.id;
-
 
 --
 -- Name: projects; Type: TABLE; Schema: public; Owner: postgres
@@ -211,13 +199,11 @@ CREATE TABLE IF NOT EXISTS public.projects (
     site_url character varying(255)
 );
 
-
 ALTER TABLE public.projects OWNER TO neondb_owner;
 
 --
 -- Name: projects_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
-
 
 DROP SEQUENCE IF EXISTS public.projects_id_seq CASCADE;
 
@@ -229,7 +215,6 @@ CREATE SEQUENCE public.projects_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.projects_id_seq OWNER TO neondb_owner;
 
 --
@@ -238,6 +223,48 @@ ALTER SEQUENCE public.projects_id_seq OWNER TO neondb_owner;
 
 ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 
+--
+-- Name: sponsors; Type: TABLE; Schema: public; Owner: postgres
+--
+
+DROP TABLE IF EXISTS public.sponsors CASCADE;
+
+CREATE TABLE IF NOT EXISTS public.sponsors (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    secteur_activite character varying(255) NOT NULL,
+    phone character varying(20) NOT NULL,
+    email character varying(255) NOT NULL,
+    called boolean DEFAULT false,
+    comments text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.sponsors OWNER TO neondb_owner;
+
+
+--
+-- Name: sponsors_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+DROP SEQUENCE IF EXISTS public.sponsors_id_seq CASCADE;
+
+CREATE SEQUENCE public.sponsors_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.sponsors_id_seq OWNER TO neondb_owner;
+
+--
+-- Name: sponsors_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.sponsors_id_seq OWNED BY public.sponsors.id;
 
 --
 -- Name: admin_credits id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -245,13 +272,11 @@ ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 
 ALTER TABLE ONLY public.admin_credits ALTER COLUMN id SET DEFAULT nextval('public.admin_credits_id_seq'::regclass);
 
-
 --
 -- Name: admin_roles id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.admin_roles ALTER COLUMN id SET DEFAULT nextval('public.admin_roles_id_seq'::regclass);
-
 
 --
 -- Name: events id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -259,13 +284,11 @@ ALTER TABLE ONLY public.admin_roles ALTER COLUMN id SET DEFAULT nextval('public.
 
 ALTER TABLE ONLY public.events ALTER COLUMN id SET DEFAULT nextval('public.events_id_seq'::regclass);
 
-
 --
 -- Name: members id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.members ALTER COLUMN id SET DEFAULT nextval('public.members_id_seq'::regclass);
-
 
 --
 -- Name: projects id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -273,6 +296,11 @@ ALTER TABLE ONLY public.members ALTER COLUMN id SET DEFAULT nextval('public.memb
 
 ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.projects_id_seq'::regclass);
 
+--
+-- Name: sponsors id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sponsors ALTER COLUMN id SET DEFAULT nextval('public.sponsors_id_seq'::regclass);
 
 --
 -- Data for Name: admin_credits; Type: TABLE DATA; Schema: public; Owner: postgres
@@ -284,7 +312,6 @@ COPY public.admin_credits (id, nom, prenom, email, password, telephone, role_id)
 3	boutaoui	selena	selenaboutaoui30@gmail.com	$2b$10$cjyQsyncX4PscNotyYRxMemLNRWr95pm641NXSvpLZEJpKcoR2uNa	+213 669 02 37 13	3
 \.
 
-
 --
 -- Data for Name: admin_roles; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -295,14 +322,12 @@ COPY public.admin_roles (id, role_name, description) FROM stdin;
 3	SG	General secretary
 \.
 
-
 --
 -- Data for Name: events; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.events (id, title, description, date, location, image_url, video_url, created_at, updated_at, image_urls) FROM stdin;
 \.
-
 
 --
 -- Data for Name: members; Type: TABLE DATA; Schema: public; Owner: postgres
@@ -329,10 +354,9 @@ COPY public.members (id, nom, email, role, profile_picture_url, phone, created_a
 25	BOUROU Myriem	bouroumyriem@gmail.com	membre marketing	/default-profile.png	0560039450	2025-07-24 14:47:24.763596	2025-07-24 14:47:24.763596
 27	ZEBBAR Farah	zebbarfarah9@gmail.com	membre rel-ex	/default-profile.png	0771552302	2025-07-24 14:49:01.540137	2025-07-24 14:49:01.540137
 28	SAHBI Nyl	sahbinyl@gmail.com	alumni	/default-profile.png	0773241531	2025-07-24 14:49:51.545314	2025-07-24 14:49:51.545314
-29	IGHIL Lyna Malak	lililina934@gmail.com	alumni	/default-profile.png	0660763505	2025-07-24 14:51:14.151132	2025-07-24 14:51:14.151132
+29	IGHIL Lyna Malak	lililrina934@gmail.com	alumni	/default-profile.png	0660763505	2025-07-24 14:51:14.151132	2025-07-24 14:51:14.151132
 26	AZZOUG Hania	azz.hania@gmail.com	membre rel-ex	/default-profile.png	0665904613	2025-07-24 14:48:04.876178	2025-07-24 14:48:04.876178
 \.
-
 
 --
 -- Data for Name: projects; Type: TABLE DATA; Schema: public; Owner: postgres
@@ -341,6 +365,12 @@ COPY public.members (id, nom, email, role, profile_picture_url, phone, created_a
 COPY public.projects (id, name, description, status, start_date, end_date, image_url, created_at, updated_at, site_url) FROM stdin;
 \.
 
+--
+-- Data for Name: sponsors; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.sponsors (id, name, secteur_activite, phone, email, called, comments, created_at, updated_at) FROM stdin;
+\.
 
 --
 -- Name: admin_credits_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
@@ -348,13 +378,11 @@ COPY public.projects (id, name, description, status, start_date, end_date, image
 
 SELECT pg_catalog.setval('public.admin_credits_id_seq', 3, true);
 
-
 --
 -- Name: admin_roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
 SELECT pg_catalog.setval('public.admin_roles_id_seq', 5, true);
-
 
 --
 -- Name: events_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
@@ -362,13 +390,11 @@ SELECT pg_catalog.setval('public.admin_roles_id_seq', 5, true);
 
 SELECT pg_catalog.setval('public.events_id_seq', 1, false);
 
-
 --
 -- Name: members_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
 SELECT pg_catalog.setval('public.members_id_seq', 29, true);
-
 
 --
 -- Name: projects_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
@@ -376,6 +402,11 @@ SELECT pg_catalog.setval('public.members_id_seq', 29, true);
 
 SELECT pg_catalog.setval('public.projects_id_seq', 1, false);
 
+--
+-- Name: sponsors_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.sponsors_id_seq', 1, false);
 
 --
 -- Name: admin_credits admin_credits_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -384,14 +415,12 @@ SELECT pg_catalog.setval('public.projects_id_seq', 1, false);
 ALTER TABLE ONLY public.admin_credits
     ADD CONSTRAINT admin_credits_email_key UNIQUE (email);
 
-
 --
 -- Name: admin_credits admin_credits_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.admin_credits
     ADD CONSTRAINT admin_credits_pkey PRIMARY KEY (id);
-
 
 --
 -- Name: admin_roles admin_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -400,14 +429,12 @@ ALTER TABLE ONLY public.admin_credits
 ALTER TABLE ONLY public.admin_roles
     ADD CONSTRAINT admin_roles_pkey PRIMARY KEY (id);
 
-
 --
 -- Name: admin_roles admin_roles_role_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.admin_roles
     ADD CONSTRAINT admin_roles_role_name_key UNIQUE (role_name);
-
 
 --
 -- Name: events events_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -416,14 +443,12 @@ ALTER TABLE ONLY public.admin_roles
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_pkey PRIMARY KEY (id);
 
-
 --
 -- Name: members members_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.members
     ADD CONSTRAINT members_email_key UNIQUE (email);
-
 
 --
 -- Name: members members_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -432,7 +457,6 @@ ALTER TABLE ONLY public.members
 ALTER TABLE ONLY public.members
     ADD CONSTRAINT members_pkey PRIMARY KEY (id);
 
-
 --
 -- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
@@ -440,6 +464,19 @@ ALTER TABLE ONLY public.members
 ALTER TABLE ONLY public.projects
     ADD CONSTRAINT projects_pkey PRIMARY KEY (id);
 
+--
+-- Name: sponsors sponsors_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sponsors
+    ADD CONSTRAINT sponsors_email_key UNIQUE (email);
+
+--
+-- Name: sponsors sponsors_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sponsors
+    ADD CONSTRAINT sponsors_pkey PRIMARY KEY (id);
 
 --
 -- Name: admin_credits admin_credits_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -447,8 +484,20 @@ ALTER TABLE ONLY public.projects
 
 ALTER TABLE ONLY public.admin_credits
     ADD CONSTRAINT admin_credits_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.admin_roles(id);
+--
+-- ✅ Add display_order column for member positioning
+--
+ALTER TABLE public.members 
+ADD COLUMN IF NOT EXISTS display_order INTEGER;
+
+UPDATE public.members 
+SET display_order = id 
+WHERE display_order IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_members_display_order ON public.members(display_order);
+
+COMMENT ON COLUMN public.members.display_order IS 'Used for custom ordering of members via drag and drop interface';
 
 --
 -- PostgreSQL database dump complete
 --
-
