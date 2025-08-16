@@ -17,8 +17,8 @@ export async function POST(request: Request) {
 
     const query = `
       SELECT ac.id, ac.password, ac.nom, ac.prenom, ar.role_name
-      FROM admin_credits ac
-      JOIN admin_roles ar ON ac.role_id = ar.id
+      FROM public.admin_credits ac
+      JOIN public.admin_roles ar ON ac.role_id = ar.id
       WHERE ac.email = $1 OR ac.nom = $1
     `;
     const result = await client.query(query, [username]);
