@@ -18,6 +18,7 @@ import {
   Activity,
   Calendar,
   BarChart as BarChartIcon,
+  Building2,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Footer from "../../component/footer";
@@ -74,6 +75,7 @@ const navItems = [
   { name: "Events", href: "/nx-admin/events", icon: CalendarDays },
   { name: "Projects", href: "/nx-admin/projects", icon: FolderKanban },
   { name: "Members", href: "/nx-admin/members", icon: Users },
+  { name: "Sponsors", href: "/nx-admin/sponsors", icon: Building2 },
 ];
 
 const COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B"];
@@ -250,44 +252,53 @@ const DashboardPage = () => {
 
       {/* Sidebar */}
       <aside
-        className={`bg-[#0e0e0e] text-white transition-all duration-300 shadow-2xl z-50 ${
-          collapsed ? "w-19" : "w-64"
+        className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xl z-50 ${
+          collapsed ? "w-20" : "w-72"
         } ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 fixed h-full left-0 top-0 flex flex-col`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-700/50">
           {!collapsed && (
-            <span className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-              Nexus Admin
-            </span>
+            <div className="flex items-center space-x-3">
+              <Image
+                src="/logo-nexus.svg"
+                alt="Nexus Admin"
+                width={40}
+                height={40}
+                className="object-cover"
+              />
+              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Nexus Admin
+              </span>
+            </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hover:bg-gray-800 p-2 rounded-lg transition-all duration-200 hidden lg:block"
+            className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition-all duration-200 hidden lg:block"
           >
-            {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="hover:bg-gray-800 p-2 rounded-lg transition-all duration-200 lg:hidden"
+            className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition-all duration-200 lg:hidden"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2">
           {navItems.map(({ name, href, icon: Icon }) => (
             <Link
               key={name}
               href={href}
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition-all duration-200 text-sm font-medium group ${
+              className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium group ${
                 pathname === href
-                  ? "bg-indigo-600 text-white shadow-lg"
-                  : "text-gray-300 hover:text-white"
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Icon
@@ -295,7 +306,7 @@ const DashboardPage = () => {
                 className={
                   pathname === href
                     ? "text-white"
-                    : "text-gray-400 group-hover:text-white"
+                    : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
                 }
               />
               {!collapsed && <span>{name}</span>}
@@ -304,13 +315,15 @@ const DashboardPage = () => {
         </nav>
 
         {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="mx-3 mb-4 px-4 py-3 text-sm flex items-center gap-3 rounded-xl border border-gray-700 hover:bg-red-600 hover:border-red-500 transition-all duration-200 text-gray-300 hover:text-white"
-        >
-          <LogOut size={16} />
-          {!collapsed && <span>Logout</span>}
-        </button>
+        <div className="p-4">
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-3 text-sm flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
+          >
+            <LogOut size={16} />
+            {!collapsed && <span>Logout</span>}
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
