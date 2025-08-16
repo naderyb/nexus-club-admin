@@ -5,95 +5,150 @@ import { Client } from "pg";
 const createClient = () => {
   return new Client({
     connectionString: process.env.DATABASE_URL,
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : false,
+    ssl: process.env.NODE_ENV === "production" 
+      ? { rejectUnauthorized: false } 
+      : false,
   });
 };
 
-// GET all sponsors
-export async function GET() {
-  console.log("hey fr0m GET");
-  console.log("DATABASE_URL:", process.env.DATABASE_URL);
+// Helper function to handle database operations with proper error handling
+async function withDatabase<T>(operation: (client: Client) => Promise<T>): Promise<T> {
   const client = createClient();
-  await client.connect();
-
+  
   try {
-    const result = await client.query(
-      "SELECT * FROM sponsors ORDER BY created_at DESC"
-    );
-    return NextResponse.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching sponsors:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch sponsors" },
-      { status: 500 }
-    );
+    await client.connect();
+    return await operation(client);
   } finally {
     await client.end();
   }
 }
 
+// GET all sponsors
+export async function GET() {
+  console.log("📥 GET sponsors request");
+  
+  try {
+    const sponsors = await withDatabase(async (client) => {
+      const result = await client.query(
+        "SELECT * FROM public.sponsors ORDER BY created_at DESC"
+      );
+      return result.rows;
+    });
+
+    console.log(`✅ Retrieved ${sponsors.length} sponsors`);
+    return NextResponse.json(sponsors);
+  } catch (err) {
+    console.error("❌ Error fetching sponsors:", err);
+    
+    // Check if it's a table doesn't exist error
+    if (err && typeof err === 'object' && 'code' in err && err.code === '42P01') {
+      return NextResponse.json(
+        { error: "Sponsors table does not exist. Please run the database setup script." },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: "Failed to fetch sponsors" },
+      { status: 500 }
+    );
+  }
+}
+
 // POST new sponsor
 export async function POST(req: NextRequest) {
-  console.log("hey fr0m POST");
-  console.log("DATABASE_URL:", process.env.DATABASE_URL);
-  const client = createClient();
-  await client.connect();
-
+  console.log("📝 POST sponsor request");
+  
   try {
+    const body = await req.json();
     const {
       name,
       secteur_activite,
       phone,
       email,
+      contact_person,
+      contact_position,
       called = false,
+      email_sent = false,
       comments = null,
-    } = await req.json();
+    } = body;
 
     // Validate required fields
-    if (!name || !secteur_activite || !phone || !email) {
+    if (!name?.trim()) {
       return NextResponse.json(
-        {
-          error:
-            "Missing required fields: name, secteur_activite, phone, email",
-        },
+        { error: "Name is required" },
         { status: 400 }
       );
     }
 
-    const insertQuery = `
-      INSERT INTO sponsors 
-      (name, secteur_activite, phone, email, called, comments, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING *
-    `;
+    // Clean and prepare data
+    const cleanData = {
+      name: name.trim(),
+      secteur_activite: secteur_activite?.trim() || null,
+      phone: phone?.trim() || null,
+      email: email?.trim() || null,
+      contact_person: contact_person?.trim() || null,
+      contact_position: contact_position?.trim() || null,
+      called: Boolean(called),
+      email_sent: Boolean(email_sent),
+      comments: comments?.trim() || null,
+    };
 
-    const result = await client.query(insertQuery, [
-      name.trim(),
-      secteur_activite.trim(),
-      phone.trim(),
-      email.trim(),
-      called,
-      comments,
-    ]);
+    const newSponsor = await withDatabase(async (client) => {
+      const insertQuery = `
+        INSERT INTO public.sponsors 
+        (name, secteur_activite, phone, email, contact_person, contact_position, called, email_sent, comments, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *
+      `;
 
-    console.log(`✅ Sponsor created with ID: ${result.rows[0].id}`);
-    return NextResponse.json(result.rows[0]);
+      const result = await client.query(insertQuery, [
+        cleanData.name,
+        cleanData.secteur_activite,
+        cleanData.phone,
+        cleanData.email,
+        cleanData.contact_person,
+        cleanData.contact_position,
+        cleanData.called,
+        cleanData.email_sent,
+        cleanData.comments,
+      ]);
+
+      return result.rows[0];
+    });
+
+    console.log(`✅ Sponsor created with ID: ${newSponsor.id}`);
+    return NextResponse.json(newSponsor, { status: 201 });
+    
   } catch (err) {
-    console.error("Error adding sponsor:", err);
+    console.error("❌ Error adding sponsor:", err);
 
-    // Handle unique constraint violations (duplicate email)
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      err.code === "23505"
-    ) {
+    // Handle specific PostgreSQL errors
+    if (err && typeof err === 'object' && 'code' in err) {
+      switch (err.code) {
+        case '23505': // Unique violation
+          return NextResponse.json(
+            { error: "A sponsor with this email already exists" },
+            { status: 409 }
+          );
+        case '42P01': // Table doesn't exist
+          return NextResponse.json(
+            { error: "Sponsors table does not exist. Please run the database setup script." },
+            { status: 500 }
+          );
+        case '23502': // Not null violation
+          return NextResponse.json(
+            { error: "Missing required fields" },
+            { status: 400 }
+          );
+      }
+    }
+
+    // Handle JSON parsing errors
+    if (err instanceof SyntaxError) {
       return NextResponse.json(
-        { error: "A sponsor with this email already exists" },
-        { status: 409 }
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
       );
     }
 
@@ -101,135 +156,163 @@ export async function POST(req: NextRequest) {
       { error: "Failed to add sponsor" },
       { status: 500 }
     );
-  } finally {
-    await client.end();
   }
 }
 
-// DELETE sponsor by ID - get ID from URL searchParams
+// DELETE sponsor by ID
 export async function DELETE(req: NextRequest) {
-  console.log("DELETE sponsor request");
-
-  // Get ID from URL searchParams (?id=1)
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Sponsor ID is required" },
-      { status: 400 }
-    );
-  }
-
-  // Validate ID parameter
-  const sponsorId = parseInt(id);
-  if (isNaN(sponsorId) || sponsorId <= 0) {
-    return NextResponse.json({ error: "Invalid sponsor ID" }, { status: 400 });
-  }
-
-  const client = createClient();
+  console.log("🗑️ DELETE sponsor request");
 
   try {
-    await client.connect();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
 
-    // Check if sponsor exists before deletion
-    const checkResult = await client.query(
-      "SELECT id FROM sponsors WHERE id = $1",
-      [sponsorId]
-    );
-
-    if (checkResult.rows.length === 0) {
-      return NextResponse.json({ error: "Sponsor not found" }, { status: 404 });
-    }
-
-    // Delete the sponsor
-    await client.query("DELETE FROM sponsors WHERE id = $1", [sponsorId]);
-
-    console.log(`✅ Sponsor ${sponsorId} deleted successfully`);
-    return NextResponse.json({
-      message: "Sponsor deleted successfully",
-      id: sponsorId,
-    });
-  } catch (err) {
-    console.error("❌ Error deleting sponsor:", err);
-    return NextResponse.json(
-      { error: "Failed to delete sponsor" },
-      { status: 500 }
-    );
-  } finally {
-    await client.end();
-  }
-}
-
-// PATCH sponsor by ID - get ID from URL searchParams
-export async function PATCH(req: NextRequest) {
-  console.log("PATCH sponsor request");
-
-  // Get ID from URL searchParams (?id=1)
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Sponsor ID is required" },
-      { status: 400 }
-    );
-  }
-
-  // Validate ID parameter
-  const sponsorId = parseInt(id);
-  if (isNaN(sponsorId) || sponsorId <= 0) {
-    return NextResponse.json({ error: "Invalid sponsor ID" }, { status: 400 });
-  }
-
-  const client = createClient();
-
-  try {
-    await client.connect();
-
-    const updates = await req.json();
-
-    // Validate required fields
-    if (typeof updates.called !== "boolean") {
+    if (!id) {
       return NextResponse.json(
-        { error: "Invalid 'called' field - must be boolean" },
+        { error: "Sponsor ID is required" },
         { status: 400 }
       );
     }
 
-    // Check if sponsor exists
-    const checkResult = await client.query(
-      "SELECT id FROM sponsors WHERE id = $1",
-      [sponsorId]
-    );
-
-    if (checkResult.rows.length === 0) {
-      return NextResponse.json({ error: "Sponsor not found" }, { status: 404 });
+    const sponsorId = parseInt(id);
+    if (isNaN(sponsorId) || sponsorId <= 0) {
+      return NextResponse.json(
+        { error: "Invalid sponsor ID" },
+        { status: 400 }
+      );
     }
 
-    // Update sponsor with timestamp (removed called_by)
-    const updateQuery = `
-      UPDATE sponsors 
-      SET 
-        called = $1, 
-        comments = $2, 
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3 
-      RETURNING *
-    `;
+    const deletedSponsor = await withDatabase(async (client) => {
+      // Check if sponsor exists
+      const checkResult = await client.query(
+        "SELECT id, name FROM public.sponsors WHERE id = $1",
+        [sponsorId]
+      );
 
-    const result = await client.query(updateQuery, [
-      updates.called,
-      updates.comments || null,
-      sponsorId,
-    ]);
+      if (checkResult.rows.length === 0) {
+        throw new Error('SPONSOR_NOT_FOUND');
+      }
+
+      // Delete the sponsor
+      await client.query("DELETE FROM public.sponsors WHERE id = $1", [sponsorId]);
+      
+      return checkResult.rows[0];
+    });
+
+    console.log(`✅ Sponsor ${deletedSponsor.name} (ID: ${sponsorId}) deleted successfully`);
+    return NextResponse.json({
+      message: "Sponsor deleted successfully",
+      id: sponsorId,
+      name: deletedSponsor.name
+    });
+    
+  } catch (err) {
+    console.error("❌ Error deleting sponsor:", err);
+    
+    if (err instanceof Error && err.message === 'SPONSOR_NOT_FOUND') {
+      return NextResponse.json(
+        { error: "Sponsor not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete sponsor" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH sponsor by ID
+export async function PATCH(req: NextRequest) {
+  console.log("📝 PATCH sponsor request");
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Sponsor ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const sponsorId = parseInt(id);
+    if (isNaN(sponsorId) || sponsorId <= 0) {
+      return NextResponse.json(
+        { error: "Invalid sponsor ID" },
+        { status: 400 }
+      );
+    }
+
+    const updates = await req.json();
+
+    // Validate update fields
+    const allowedFields = [
+      'name', 'secteur_activite', 'phone', 'email', 
+      'contact_person', 'contact_position', 'called', 
+      'email_sent', 'comments'
+    ];
+    
+    const updateFields = Object.keys(updates).filter(key => allowedFields.includes(key));
+    
+    if (updateFields.length === 0) {
+      return NextResponse.json(
+        { error: "No valid fields to update" },
+        { status: 400 }
+      );
+    }
+
+    const updatedSponsor = await withDatabase(async (client) => {
+      // Check if sponsor exists
+      const checkResult = await client.query(
+        "SELECT id FROM public.sponsors WHERE id = $1",
+        [sponsorId]
+      );
+
+      if (checkResult.rows.length === 0) {
+        throw new Error('SPONSOR_NOT_FOUND');
+      }
+
+      // Build dynamic update query
+      const setClauses = [];
+      const values = [];
+      let paramIndex = 1;
+
+      updateFields.forEach(field => {
+        setClauses.push(`${field} = $${paramIndex}`);
+        values.push(updates[field]);
+        paramIndex++;
+      });
+
+      setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+      values.push(sponsorId);
+
+      const updateQuery = `
+        UPDATE public.sponsors 
+        SET ${setClauses.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+
+      const result = await client.query(updateQuery, values);
+      return result.rows[0];
+    });
 
     console.log(`✅ Sponsor ${sponsorId} updated successfully`);
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updatedSponsor);
+    
   } catch (err) {
     console.error("❌ Error updating sponsor:", err);
 
-    // Handle JSON parsing errors
+    if (err instanceof Error && err.message === 'SPONSOR_NOT_FOUND') {
+      return NextResponse.json(
+        { error: "Sponsor not found" },
+        { status: 404 }
+      );
+    }
+
     if (err instanceof SyntaxError) {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
@@ -241,8 +324,6 @@ export async function PATCH(req: NextRequest) {
       { error: "Failed to update sponsor" },
       { status: 500 }
     );
-  } finally {
-    await client.end();
   }
 }
 
