@@ -4,18 +4,11 @@ import React, { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import {
   CalendarDays,
-  FolderKanban,
-  Users,
-  LogOut,
   ChevronLeft,
   ChevronRight,
-  Grid,
   Menu,
-  X,
-  Building2,
 } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
+import { Sidebar } from "@/app/component/Sidebar";
 import { usePathname, useRouter } from "next/navigation";
 
 type EventType = {
@@ -27,14 +20,6 @@ type EventType = {
   image_urls?: string[];
   video_url?: string;
 };
-
-const navItems = [
-  { name: "Dashboard", href: "/nx-admin/dashboard", icon: Grid },
-  { name: "Events", href: "/nx-admin/events", icon: CalendarDays },
-  { name: "Projects", href: "/nx-admin/projects", icon: FolderKanban },
-  { name: "Members", href: "/nx-admin/members", icon: Users },
-  { name: "Sponsors", href: "/nx-admin/sponsors", icon: Building2 },
-];
 
 const inputClass =
   "w-full p-3 rounded-lg bg-[#1f2937] border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400 transition-all duration-200";
@@ -368,98 +353,30 @@ const EventsPage = () => {
     }
   };
 
-  const handleLogout = () => {
-    // Clear any stored authentication data
-    document.cookie =
-      "nexus_administrateur=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    router.push("/");
-  };
-
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xl z-50 ${
-          collapsed ? "w-20" : "w-72"
-        } ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 fixed h-full left-0 top-0 flex flex-col`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-700/50">
-          {!collapsed && (
-            <div className="flex items-center space-x-3">
-              <Image
-                src="/logo-nexus.svg"
-                alt="Nexus Admin"
-                width={40}
-                height={40}
-                className="object-cover"
-              />
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Nexus Admin
-              </span>
-            </div>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition-all duration-200 hidden lg:block"
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition-all duration-200 lg:hidden"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          {navItems.map(({ name, href, icon: Icon }) => (
-            <Link
-              key={name}
-              href={href}
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium group ${
-                pathname === href
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
-                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-            >
-              <Icon
-                size={20}
-                className={
-                  pathname === href
-                    ? "text-white"
-                    : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
-                }
-              />
-              {!collapsed && <span>{name}</span>}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Logout */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-3 text-sm flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
-          >
-            <LogOut size={16} />
-            {!collapsed && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        pathname={pathname}
+        onLogout={() => {
+          document.cookie =
+            "nexus_administrateur=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          router.push("/");
+        }}
+      />
 
       {/* Main Content */}
       <div
