@@ -1,28 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { Sidebar } from "@/app/component/Sidebar";
 import {
   CalendarDays,
   FolderKanban,
   Users,
-  Grid,
-  LogOut,
-  ChevronRight,
-  ChevronLeft,
-  // Plus,
   Menu,
-  X,
   TrendingUp,
   Activity,
-  Calendar,
   BarChart as BarChartIcon,
   Building2,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Footer from "../../component/footer";
-import dynamic from "next/dynamic";
 import {
   BarChart,
   Bar,
@@ -37,16 +28,6 @@ import {
   Pie,
   Cell,
 } from "recharts";
-// import { cookies } from "next/headers";
-
-type EventType = {
-  id: number;
-  title: string;
-  date: string;
-  location: string;
-  image_urls?: string[];
-  video_url?: string;
-};
 
 // Client-side cookie utility functions
 const getCookie = (name: string): string | null => {
@@ -63,29 +44,17 @@ const setCookie = (name: string, value: string, days: number = 30): void => {
   document.cookie = `${name}=${value}; expires=${expires}; path=/`;
 };
 
-const deleteCookie = (name: string): void => {
-  if (typeof document === "undefined") return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-};
-
-const ReactCalendar = dynamic(() => import("react-calendar"), { ssr: false });
-
-const navItems = [
-  { name: "Dashboard", href: "/nx-admin/dashboard", icon: Grid },
-  { name: "Events", href: "/nx-admin/events", icon: CalendarDays },
-  { name: "Projects", href: "/nx-admin/projects", icon: FolderKanban },
-  { name: "Members", href: "/nx-admin/members", icon: Users },
-  { name: "Sponsors", href: "/nx-admin/sponsors", icon: Building2 },
-];
-
 const COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B"];
 
 const DashboardPage = () => {
-  const [stats, setStats] = useState({ events: 0, projects: 0, members: 0 });
-  const [recentEvents, setRecentEvents] = useState<EventType[]>([]);
+  const [stats, setStats] = useState({
+    events: 0,
+    projects: 0,
+    members: 0,
+    sponsors: 0,
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
@@ -94,12 +63,14 @@ const DashboardPage = () => {
     { name: "Events", value: stats.events, color: COLORS[0] },
     { name: "Projects", value: stats.projects, color: COLORS[1] },
     { name: "Members", value: stats.members, color: COLORS[2] },
+    { name: "Sponsors", value: stats.sponsors, color: COLORS[3] },
   ];
 
   const pieData = [
     { name: "Events", value: stats.events, fill: COLORS[0] },
     { name: "Projects", value: stats.projects, fill: COLORS[1] },
     { name: "Members", value: stats.members, fill: COLORS[2] },
+    { name: "Sponsors", value: stats.sponsors, fill: COLORS[3] },
   ];
 
   const quickActions = [
@@ -127,6 +98,14 @@ const DashboardPage = () => {
       color: "from-purple-600 to-purple-700",
       hoverColor: "hover:from-purple-700 hover:to-purple-800",
     },
+    {
+      title: "Add Sponsor",
+      description: "Register new sponsor",
+      href: "/nx-admin/sponsors",
+      icon: Building2,
+      color: "from-orange-600 to-orange-700",
+      hoverColor: "hover:from-orange-700 hover:to-orange-800",
+    },
   ];
 
   const statCards = [
@@ -136,8 +115,6 @@ const DashboardPage = () => {
       icon: CalendarDays,
       color: "text-blue-400",
       bgColor: "bg-blue-500/10",
-      change: "+12%",
-      changeColor: "text-green-400",
     },
     {
       title: "Total Projects",
@@ -145,8 +122,6 @@ const DashboardPage = () => {
       icon: FolderKanban,
       color: "text-green-400",
       bgColor: "bg-green-500/10",
-      change: "+8%",
-      changeColor: "text-green-400",
     },
     {
       title: "Total Members",
@@ -154,8 +129,13 @@ const DashboardPage = () => {
       icon: Users,
       color: "text-purple-400",
       bgColor: "bg-purple-500/10",
-      change: "+15%",
-      changeColor: "text-green-400",
+    },
+    {
+      title: "Total Sponsors",
+      value: stats.sponsors,
+      icon: Building2,
+      color: "text-orange-400",
+      bgColor: "bg-orange-500/10",
     },
   ];
 
@@ -206,15 +186,6 @@ const DashboardPage = () => {
     fetchAdmin();
   }, [router]);
 
-  const handleLogout = () => {
-    // Clear admin info from cookies
-    deleteCookie("admin_info");
-    deleteCookie("auth_token"); // Clear any auth tokens if they exist
-
-    // Redirect to login page
-    router.push("/");
-  };
-
   useEffect(() => {
     async function fetchStats() {
       try {
@@ -227,11 +198,7 @@ const DashboardPage = () => {
         }
 
         // Fetch recent events
-        const eventsRes = await fetch("/api/events");
-        if (eventsRes.ok) {
-          const eventsData = await eventsRes.json();
-          setRecentEvents(eventsData.slice(0, 3)); // Get only the 3 most recent events
-        }
+        
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       }
@@ -245,86 +212,24 @@ const DashboardPage = () => {
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xl z-50 ${
-          collapsed ? "w-20" : "w-72"
-        } ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 fixed h-full left-0 top-0 flex flex-col`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-700/50">
-          {!collapsed && (
-            <div className="flex items-center space-x-3">
-              <Image
-                src="/logo-nexus.svg"
-                alt="Nexus Admin"
-                width={40}
-                height={40}
-                className="object-cover"
-              />
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Nexus Admin
-              </span>
-            </div>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition-all duration-200 hidden lg:block"
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition-all duration-200 lg:hidden"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          {navItems.map(({ name, href, icon: Icon }) => (
-            <Link
-              key={name}
-              href={href}
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium group ${
-                pathname === href
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
-                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-            >
-              <Icon
-                size={20}
-                className={
-                  pathname === href
-                    ? "text-white"
-                    : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
-                }
-              />
-              {!collapsed && <span>{name}</span>}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Logout */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-3 text-sm flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
-          >
-            <LogOut size={16} />
-            {!collapsed && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        pathname={pathname}
+        onLogout={() => {
+          document.cookie =
+            "nexus_administrateur=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          router.push("/");
+        }}
+      />
 
       {/* Main Content */}
       <div
@@ -365,7 +270,7 @@ const DashboardPage = () => {
               <Activity size={24} className="text-indigo-400" />
               Quick Actions
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {quickActions.map((action) => (
                 <button
                   key={action.title}
@@ -390,24 +295,21 @@ const DashboardPage = () => {
               <TrendingUp size={24} className="text-indigo-400" />
               Analytics Overview
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {statCards.map((card) => (
                 <div
                   key={card.title}
                   className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl p-6 shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 hover:scale-[1.02]"
                 >
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-center mb-4">
                     <div className={`p-3 rounded-xl ${card.bgColor}`}>
                       <card.icon size={24} className={card.color} />
                     </div>
-                    <span className={`text-sm font-medium ${card.changeColor}`}>
-                      {card.change}
-                    </span>
                   </div>
-                  <div>
+                  <div className="text-center">
                     <p className="text-3xl font-bold text-white mb-1">
                       {loading ? (
-                        <div className="w-12 h-8 bg-gray-700 rounded animate-pulse" />
+                        <div className="w-12 h-8 bg-gray-700 rounded animate-pulse mx-auto" />
                       ) : (
                         card.value
                       )}
@@ -524,195 +426,6 @@ const DashboardPage = () => {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Events Section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <CalendarDays size={24} className="text-indigo-400" />
-              Recent Events
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {loading ? (
-                // Loading skeletons
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl p-6 shadow-lg animate-pulse"
-                  >
-                    <div className="w-full h-32 bg-gray-700 rounded-lg mb-4"></div>
-                    <div className="h-4 bg-gray-700 rounded mb-2"></div>
-                    <div className="h-3 bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-700 rounded w-1/2"></div>
-                  </div>
-                ))
-              ) : recentEvents.length > 0 ? (
-                recentEvents.map((event: EventType) => (
-                  <div
-                    key={event.id}
-                    className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-indigo-500/20 hover:scale-[1.02]"
-                  >
-                    {/* Event Image */}
-                    <div className="aspect-video relative overflow-hidden">
-                      {Array.isArray(event.image_urls) &&
-                      event.image_urls.length > 0 ? (
-                        <Image
-                          src={event.image_urls[0] || "/fallback.png"}
-                          alt={event.title}
-                          width={400}
-                          height={200}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                          <CalendarDays size={32} className="text-gray-600" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Event Content */}
-                    <div className="p-4">
-                      <h3
-                        className="text-lg font-bold text-white mb-2 truncate"
-                        title={event.title}
-                      >
-                        {event.title}
-                      </h3>
-                      <div className="space-y-1 mb-3">
-                        <p className="text-sm text-zinc-400 flex items-center gap-2">
-                          <CalendarDays size={14} />
-                          {new Date(event.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                        <p className="text-sm text-zinc-400 flex items-center gap-2">
-                          <span>📍</span>
-                          <span className="truncate">{event.location}</span>
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => router.push("/nx-admin/events")}
-                        className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all duration-200"
-                      >
-                        View All Events
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-8">
-                  <CalendarDays
-                    size={64}
-                    className="mx-auto text-gray-600 mb-4"
-                  />
-                  <h3 className="text-xl font-semibold text-gray-400 mb-2">
-                    No events yet
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    Create your first event to get started
-                  </p>
-                  <button
-                    onClick={() => router.push("/nx-admin/events")}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all duration-200"
-                  >
-                    Create Event
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Calendar Section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-              <Calendar size={24} className="text-indigo-400" />
-              Event Calendar
-            </h2>
-            <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 p-6 rounded-2xl shadow-lg max-w-2xl">
-              <div className="custom-calendar">
-                <style jsx global>{`
-                  .react-calendar {
-                    background: transparent !important;
-                    border: none !important;
-                    font-family: inherit !important;
-                    color: white !important;
-                    width: 100% !important;
-                  }
-                  .react-calendar__navigation {
-                    background: transparent !important;
-                    margin-bottom: 1rem !important;
-                  }
-                  .react-calendar__navigation button {
-                    background: rgba(79, 70, 229, 0.2) !important;
-                    color: white !important;
-                    border: 1px solid rgba(79, 70, 229, 0.3) !important;
-                    border-radius: 0.5rem !important;
-                    padding: 0.5rem !important;
-                    margin: 0 0.25rem !important;
-                    transition: all 0.2s !important;
-                  }
-                  .react-calendar__navigation button:hover {
-                    background: rgba(79, 70, 229, 0.4) !important;
-                    border-color: rgba(79, 70, 229, 0.5) !important;
-                  }
-                  .react-calendar__month-view__weekdays {
-                    color: #9ca3af !important;
-                    font-weight: 600 !important;
-                    text-transform: uppercase !important;
-                    font-size: 0.75rem !important;
-                  }
-                  .react-calendar__tile {
-                    background: transparent !important;
-                    color: white !important;
-                    border: 1px solid transparent !important;
-                    border-radius: 0.5rem !important;
-                    padding: 0.75rem 0.5rem !important;
-                    margin: 0.125rem !important;
-                    transition: all 0.2s !important;
-                  }
-                  .react-calendar__tile:hover {
-                    background: rgba(79, 70, 229, 0.2) !important;
-                    border-color: rgba(79, 70, 229, 0.3) !important;
-                  }
-                  .react-calendar__tile--active {
-                    background: linear-gradient(
-                      135deg,
-                      #4f46e5,
-                      #7c3aed
-                    ) !important;
-                    color: white !important;
-                    border-color: #4f46e5 !important;
-                  }
-                  .react-calendar__tile--now {
-                    background: rgba(16, 185, 129, 0.2) !important;
-                    border-color: rgba(16, 185, 129, 0.3) !important;
-                  }
-                `}</style>
-                <ReactCalendar
-                  onChange={(date) => setSelectedDate(date as Date)}
-                  value={selectedDate}
-                  calendarType="gregory"
-                />
-              </div>
-
-              <div className="mt-6 p-4 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
-                <p className="text-indigo-300 font-medium">
-                  📅 Selected Date:{" "}
-                  <span className="text-white">
-                    {selectedDate
-                      ? selectedDate.toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
-                      : "None"}
-                  </span>
-                </p>
               </div>
             </div>
           </div>
