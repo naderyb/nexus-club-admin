@@ -7,7 +7,7 @@ import { CreateSponsorPanel } from "./components/CreateSponsorPanel";
 import { SponsorsListPanel } from "./components/SponsorsListPanel";
 import { EditDrawer } from "./components/EditDrawer";
 import { DeleteModal } from "./components/DeleteModal";
-import { Sidebar } from "./components/Sidebar";
+import { Sidebar } from "../../component/Sidebar";
 import { MobileHeader } from "./components/MobileHeader";
 import { FilterBar } from "./components/FilterBar";
 import { StatsCards } from "./components/StatsCards";
