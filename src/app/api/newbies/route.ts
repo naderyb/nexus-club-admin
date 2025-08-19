@@ -18,7 +18,7 @@ pool.on("error", (err) => {
   console.error("Unexpected error on idle client", err);
 });
 
-export interface Newbie {
+export interface newbies {
   id: number;
   nom: string;
   prenom: string;
@@ -27,6 +27,9 @@ export interface Newbie {
   motivation?: string | null;
   additional_notes?: string | null;
   email?: string | null;
+  number?: string | null; // Phone number
+  instagram?: string | null; // Add Instagram
+  discord?: string | null; // Add Discord
   created_at: string;
   status: "pending" | "accepted" | "declined";
   updated_at?: string;
@@ -49,6 +52,9 @@ export async function GET() {
         motivation,
         additional_notes,
         email,
+        num,
+        instagram,
+        discord,
         created_at,
         status,
         updated_at
@@ -73,13 +79,13 @@ export async function GET() {
   }
 }
 
-// POST → insert a new newbie
+// POST → insert a new newbies
 export async function POST(req: Request) {
-  console.log("🔥 POST request received at /api/newbies");
+  console.log("POST request received at /api/newbies");
 
   try {
     const body = await req.json();
-    console.log("📝 Request body:", body);
+    console.log("Request body:", body);
 
     const {
       nom,
@@ -88,6 +94,9 @@ export async function POST(req: Request) {
       hobbies,
       motivation,
       email,
+      number,
+      instagram,
+      discord,
       additional_notes,
       anything,
       extra,
@@ -107,8 +116,8 @@ export async function POST(req: Request) {
     const client = await pool.connect();
 
     const query = `
-      INSERT INTO newbies (nom, prenom, classe, hobbies, motivation, email, additional_notes, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+      INSERT INTO newbies (nom, prenom, classe, hobbies, motivation, email, number, instagram, discord, additional_notes, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
       RETURNING *;
     `;
 
@@ -119,20 +128,23 @@ export async function POST(req: Request) {
       hobbies || null,
       motivation || null,
       email || null,
+      number || null,
+      instagram || null,
+      discord || null,
       notes,
     ];
 
-    console.log("📊 Executing query with values:", values);
+    console.log("Executing query with values:", values);
     const result = await client.query(query, values);
     client.release();
 
-    console.log("✅ Successfully inserted newbie:", result.rows[0]);
+    console.log("Successfully inserted newbies:", result.rows[0]);
     return NextResponse.json(
-      { success: true, newbie: result.rows[0] },
+      { success: true, newbies: result.rows[0] },
       { status: 201 }
     );
   } catch (error: unknown) {
-    console.error("❌ Error inserting newbie:", error);
+    console.error("❌ Error inserting newbies:", error);
     return NextResponse.json(
       {
         success: false,
@@ -144,9 +156,9 @@ export async function POST(req: Request) {
   }
 }
 
-// PATCH → update newbie status
+// PATCH → update newbies status
 export async function PATCH(req: Request) {
-  console.log("🔥 PATCH request received at /api/newbies");
+  console.log("PATCH request received at /api/newbies");
 
   try {
     const body = await req.json();
@@ -180,18 +192,18 @@ export async function PATCH(req: Request) {
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Newbie not found" },
+        { success: false, error: "newbies not found" },
         { status: 404 }
       );
     }
 
-    console.log("✅ Successfully updated newbie status");
+    console.log("Successfully updated newbies status");
     return NextResponse.json({
       success: true,
-      newbie: result.rows[0],
+      newbies: result.rows[0],
     });
   } catch (error: unknown) {
-    console.error("❌ Error updating newbie status:", error);
+    console.error("❌ Error updating newbies status:", error);
     return NextResponse.json(
       {
         success: false,
@@ -226,7 +238,7 @@ async function withDatabase<T>(
   throw new Error("Failed to connect after retries");
 }
 
-// DELETE → delete a newbie
+// DELETE → delete a newbies
 export async function DELETE(req: Request) {
   console.log("🔥 DELETE request received at /api/newbies");
 
@@ -250,18 +262,18 @@ export async function DELETE(req: Request) {
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Newbie not found" },
+        { success: false, error: "newbies not found" },
         { status: 404 }
       );
     }
 
-    console.log("✅ Successfully deleted newbie");
+    console.log("✅ Successfully deleted newbies");
     return NextResponse.json({
       success: true,
-      message: "Newbie deleted successfully",
+      message: "newbies deleted successfully",
     });
   } catch (error: unknown) {
-    console.error("❌ Error deleting newbie:", error);
+    console.error("❌ Error deleting newbies:", error);
     return NextResponse.json(
       {
         success: false,
