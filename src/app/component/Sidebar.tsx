@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  UserPlus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -36,6 +37,7 @@ export function Sidebar({
     { icon: Building2, label: "Sponsors", href: "/nx-admin/sponsors" },
     { icon: Calendar, label: "Events", href: "/nx-admin/events" },
     { icon: FolderOpen, label: "Projects", href: "/nx-admin/projects" },
+    { icon: UserPlus, label: "Newbies", href: "/nx-admin/newbies" },
   ];
 
   const sidebarClass = `fixed top-0 left-0 h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 z-50 transition-all duration-300 ${
