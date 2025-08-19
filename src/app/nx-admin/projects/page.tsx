@@ -544,7 +544,6 @@ export default function ProjectsPage() {
       </div>
 
       {/* Mobile Menu Overlay */}
-      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
