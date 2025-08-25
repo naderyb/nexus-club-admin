@@ -198,7 +198,6 @@ const DashboardPage = () => {
         }
 
         // Fetch recent events
-        
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       }
@@ -227,6 +226,8 @@ const DashboardPage = () => {
         onLogout={() => {
           document.cookie =
             "nexus_administrateur=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          document.cookie =
+            "admin_info=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
           router.push("/");
         }}
       />
