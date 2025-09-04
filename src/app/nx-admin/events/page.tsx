@@ -5,7 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { CalendarDays, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { Sidebar } from "@/app/component/Sidebar";
 import { usePathname, useRouter } from "next/navigation";
-import { MediaUpload } from "@/app/component/MediaUpload/MediaUpload.tsx";
+import { MediaUpload } from "@/app/component/MediaUpload/MediaUpload";
 import Image from "next/image";
 
 type EventType = {
