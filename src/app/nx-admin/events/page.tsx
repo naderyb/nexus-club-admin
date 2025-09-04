@@ -2,14 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { Sidebar } from "@/app/component/Sidebar";
 import { usePathname, useRouter } from "next/navigation";
+import { MediaUpload } from "@/app/component/MediaUpload/MediaUpload.tsx";
+import Image from "next/image";
 
 type EventType = {
   id: number;
@@ -17,8 +14,7 @@ type EventType = {
   description?: string;
   date: string;
   location: string;
-  image_urls?: string[];
-  video_url?: string;
+  media: string[]; // Changed from image_urls to media
 };
 
 const inputClass =
@@ -209,8 +205,7 @@ const EventsPage = () => {
     description: "",
     date: "",
     location: "",
-    imageFile: [] as File[],
-    videoFile: null as File | null,
+    mediaFiles: [] as File[], // Changed from imageFile to mediaFiles
   });
 
   const [deleteModal, setDeleteModal] = useState({
@@ -255,16 +250,11 @@ const EventsPage = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, files } = e.target;
-
-    if (files) {
-      if (name === "imageFile")
-        setForm({ ...form, imageFile: Array.from(files) });
-      else if (name === "videoFile") setForm({ ...form, videoFile: files[0] });
-    } else {
-      setForm({ ...form, [name]: value });
-    }
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
   };
 
   const resetForm = () => {
@@ -273,8 +263,7 @@ const EventsPage = () => {
       description: "",
       date: "",
       location: "",
-      imageFile: [],
-      videoFile: null,
+      mediaFiles: [],
     });
     setFormMode("add");
     setEditingId(null);
@@ -282,6 +271,11 @@ const EventsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!form.title || !form.date || !form.location) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
 
     const formData = new FormData();
     if (formMode === "edit") formData.append("id", String(editingId));
@@ -291,11 +285,10 @@ const EventsPage = () => {
     formData.append("date", form.date);
     formData.append("location", form.location);
 
-    form.imageFile.forEach((file) => formData.append("images", file));
-    if (form.videoFile) formData.append("video", form.videoFile);
+    // Append media files
+    form.mediaFiles.forEach((file) => formData.append("media", file));
 
-    const endpoint =
-      formMode === "add" ? "/api/events" : `/api/events?id=${editingId}`;
+    const endpoint = formMode === "add" ? "/api/events" : `/api/events`;
 
     try {
       const res = await fetch(endpoint, {
@@ -324,8 +317,7 @@ const EventsPage = () => {
       description: event.description || "",
       date: event.date.split("T")[0],
       location: event.location,
-      imageFile: [],
-      videoFile: null,
+      mediaFiles: [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -342,7 +334,7 @@ const EventsPage = () => {
       if (res.ok) {
         toast.success(result.message);
         fetchEvents();
-        setCurrentPage(1); // Reset to first page after delete
+        setCurrentPage(1);
       } else {
         toast.error(result.error);
       }
@@ -355,7 +347,6 @@ const EventsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Mobile Menu Overlay */}
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
@@ -378,24 +369,21 @@ const EventsPage = () => {
         }}
       />
 
-      {/* Main Content */}
       <div
         className={`transition-all duration-300 ${
-          collapsed ? "lg:ml-16" : "lg:ml-64"
+          collapsed ? "lg:ml-20" : "lg:ml-64"
         }`}
       >
-        {/* Mobile Header */}
-        <div className="lg:hidden bg-[#0e0e0e] text-white p-4 flex items-center justify-between border-b border-gray-700">
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="hover:bg-gray-800 p-2 rounded-lg transition-all duration-200"
-          >
-            <Menu size={20} />
-          </button>
-          <span className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Nexus Admin
-          </span>
-          <div className="w-10" /> {/* Spacer */}
+        <div className="lg:hidden">
+          <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+            <h1 className="text-lg font-semibold text-white">Events</h1>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-lg bg-gray-700 text-white"
+            >
+              <Menu size={20} />
+            </button>
+          </div>
         </div>
 
         <main className="p-4 sm:p-6 lg:p-8 text-white min-h-screen">
@@ -448,6 +436,7 @@ const EventsPage = () => {
                     className={inputClass}
                   />
                 </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
                     Event Description
@@ -455,14 +444,13 @@ const EventsPage = () => {
                   <textarea
                     name="description"
                     value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
+                    onChange={handleInputChange}
                     placeholder="Enter event description (optional)"
                     rows={4}
                     className="w-full p-3 rounded-lg bg-[#1f2937] border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400 transition-all duration-200 resize-none"
                   />
                 </div>
+
                 <div className="relative" ref={calendarRef}>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
                     Event Date *
@@ -511,6 +499,7 @@ const EventsPage = () => {
                     </>
                   )}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
                     Event Location *
@@ -526,6 +515,24 @@ const EventsPage = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Media Upload Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-indigo-400 mb-6">
+                Event Media
+              </h2>
+              <MediaUpload
+                files={form.mediaFiles}
+                onChange={(files) => setForm({ ...form, mediaFiles: files })}
+                existingMedia={
+                  formMode === "edit" && editingId
+                    ? events.find((e) => e.id === editingId)?.media || []
+                    : []
+                }
+                maxFiles={8}
+                accept="image/*,video/*"
+              />
             </div>
 
             {/* Action Buttons */}
@@ -587,6 +594,32 @@ const EventsPage = () => {
                     key={event.id}
                     className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-indigo-500/20 hover:scale-[1.02] hover:border-indigo-500/50"
                   >
+                    {/* Event Media */}
+                    {event.media && event.media.length > 0 && (
+                      <div className="relative h-48 bg-gray-800 overflow-hidden group">
+                        {event.media[0].match(/\.(mp4|webm|ogg)$/i) ? (
+                          <video
+                            src={event.media[0]}
+                            className="w-full h-full object-cover"
+                            controls
+                          />
+                        ) : (
+                          <Image
+                            src={event.media[0]}
+                            alt={event.title}
+                            width={300}
+                            height={200}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                        )}
+                        {event.media.length > 1 && (
+                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                            +{event.media.length - 1} more
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Event Content */}
                     <div className="p-5">
                       <h3
@@ -600,7 +633,6 @@ const EventsPage = () => {
                         <p className="text-sm text-zinc-400 flex items-center gap-2">
                           <CalendarDays size={14} />
                           {(() => {
-                            // Parse date without timezone conversion
                             const eventDate = event.date.includes("T")
                               ? event.date.split("T")[0]
                               : event.date;
@@ -637,17 +669,6 @@ const EventsPage = () => {
                         )}
                       </div>
 
-                      {event.video_url && (
-                        <div className="mb-4">
-                          <video
-                            src={event.video_url}
-                            controls
-                            className="w-full rounded-lg shadow-md bg-black"
-                            style={{ maxHeight: "120px" }}
-                          />
-                        </div>
-                      )}
-
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         <button
@@ -674,34 +695,47 @@ const EventsPage = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="text-sm text-gray-400">
+                  Showing {(currentPage - 1) * eventsPerPage + 1} to{" "}
+                  {Math.min(currentPage * eventsPerPage, events.length)} of{" "}
+                  {events.length} events
+                </div>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-all duration-200 font-medium"
+                    className="p-2 rounded-lg bg-gray-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
                   >
-                    Previous
+                    <ChevronLeft size={16} />
                   </button>
+
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                            currentPage === page
+                              ? "bg-indigo-600 text-white"
+                              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
+                  </div>
+
                   <button
                     onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-all duration-200 font-medium"
+                    className="p-2 rounded-lg bg-gray-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
                   >
-                    Next
+                    <ChevronRight size={16} />
                   </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-300">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    ({events.length} total events)
-                  </span>
                 </div>
               </div>
             )}
@@ -724,25 +758,30 @@ const EventsPage = () => {
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex gap-4">
                   <button
                     onClick={() =>
                       setDeleteModal({ open: false, eventId: null })
                     }
-                    className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all duration-200"
+                    className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all duration-200"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDelete}
-                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-all duration-200"
+                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-all duration-200"
                   >
-                    Yes, Delete
+                    Delete Event
                   </button>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Additional info note */}
+          <div className="text-center text-gray-500 text-sm">
+            ({events.length} total events)
+          </div>
         </main>
       </div>
     </div>
