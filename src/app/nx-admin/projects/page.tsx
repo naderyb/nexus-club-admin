@@ -25,7 +25,7 @@ import React from "react";
 import Image from "next/image";
 import Footer from "@/app/component/footer";
 import { AnimatePresence, motion } from "framer-motion";
-import { MediaUpload } from "@/app/component/MediaUpload/MediaUpload.tsx";
+import { MediaUpload } from "@/app/component/MediaUpload/MediaUpload";
 
 // Custom Calendar Component
 const CustomCalendar = ({
