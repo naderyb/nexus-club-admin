@@ -25,6 +25,7 @@ import React from "react";
 import Image from "next/image";
 import Footer from "@/app/component/footer";
 import { AnimatePresence, motion } from "framer-motion";
+import { MediaUpload } from "@/app/component/MediaUpload/MediaUpload.tsx";
 
 // Custom Calendar Component
 const CustomCalendar = ({
@@ -194,8 +195,18 @@ type Project = {
   status: string;
   start_date: string;
   end_date: string;
-  image_url: string;
+  media: string[]; // Changed from image_url to media array
   site_url: string;
+};
+
+type ProjectFormData = {
+  name: string;
+  description: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  mediaFiles: File[]; // Changed from image to mediaFiles array
+  siteUrl: string;
 };
 
 type ToastType = "success" | "error" | "warning" | "info";
@@ -287,25 +298,13 @@ export default function ProjectsPage() {
   const startCalendarRef = useRef<HTMLDivElement>(null);
   const endCalendarRef = useRef<HTMLDivElement>(null);
 
-  type ProjectFormData = {
-    name: string;
-    description: string;
-    status: string;
-    start_date: string;
-    end_date: string;
-    image: File | null;
-    siteUrl: string;
-  };
-
-  type ProjectFormDataKey = keyof ProjectFormData;
-
   const [formData, setFormData] = useState<ProjectFormData>({
     name: "",
     description: "",
     status: "",
     start_date: "",
     end_date: "",
-    image: null,
+    mediaFiles: [], // Changed from image: null to mediaFiles: []
     siteUrl: "",
   });
 
@@ -375,7 +374,7 @@ export default function ProjectsPage() {
       status: "",
       start_date: "",
       end_date: "",
-      image: null,
+      mediaFiles: [], // Changed from image: null to mediaFiles: []
       siteUrl: "",
     });
     setEditingId(null);
@@ -386,7 +385,7 @@ export default function ProjectsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { name, status, start_date, end_date, image } = formData;
+    const { name, description, status, start_date, end_date, mediaFiles, siteUrl } = formData; // Use all variables
 
     if (!name || !status || !start_date || !end_date) {
       showToast(
@@ -409,16 +408,19 @@ export default function ProjectsPage() {
 
     setSubmitting(true);
     const form = new FormData();
-    Object.entries(formData).forEach(([key, val]) => {
-      const k = key === "siteUrl" ? "site_url" : key;
-      if (val instanceof Blob) form.append(k, val);
-      else if (typeof val === "string") form.append(k, val);
-    });
+    
+    // Use the destructured variables instead of formData.property
+    form.append("name", name);
+    form.append("description", description);
+    form.append("status", status);
+    form.append("start_date", start_date);
+    form.append("end_date", end_date);
+    form.append("site_url", siteUrl); // Use destructured siteUrl
+
+    // Add media files using the destructured mediaFiles
+    mediaFiles.forEach((file) => form.append("media", file));
 
     if (editingId) {
-      if (image) {
-        form.append("image", image);
-      }
       form.append("id", String(editingId));
     }
 
@@ -498,7 +500,7 @@ export default function ProjectsPage() {
       status: project.status,
       start_date: project.start_date.slice(0, 10),
       end_date: project.end_date.slice(0, 10),
-      image: null,
+      mediaFiles: [], // Changed from image: null to mediaFiles: []
       siteUrl: project.site_url,
     });
     setShowForm(true);
@@ -663,13 +665,13 @@ export default function ProjectsPage() {
                   onSubmit={handleSubmit}
                   className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
                 >
-                  {[
+                  {/* Basic form fields */}
+                  { [
                     ["Project Name *", "name", "text"],
                     ["Description *", "description", "textarea"],
                     ["Status *", "status", "select"],
                     ["Start Date *", "start_date", "date"],
                     ["End Date *", "end_date", "date"],
-                    ["Upload Image", "image", "file"],
                     ["Project URL", "siteUrl", "url"],
                   ].map(([label, key, type]) => (
                     <div
@@ -689,15 +691,15 @@ export default function ProjectsPage() {
                           className="w-full p-3 bg-zinc-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
                           placeholder="Enter project description..."
                           value={
-                            typeof formData[key as ProjectFormDataKey] ===
+                            typeof formData[key as keyof ProjectFormData] ===
                             "string"
-                              ? (formData[key as ProjectFormDataKey] as string)
+                              ? (formData[key as keyof ProjectFormData] as string)
                               : ""
                           }
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              [key as ProjectFormDataKey]: e.target.value,
+                              [key as keyof ProjectFormData]: e.target.value,
                             })
                           }
                         />
@@ -739,16 +741,15 @@ export default function ProjectsPage() {
                           >
                             <span
                               className={
-                                formData[key as ProjectFormDataKey]
+                                formData[key as keyof ProjectFormData]
                                   ? "text-white"
                                   : "text-gray-400"
                               }
                             >
-                              {formData[key as ProjectFormDataKey]
+                              {formData[key as keyof ProjectFormData]
                                 ? (() => {
-                                    // Parse date without timezone conversion
                                     const dateString = formData[
-                                      key as ProjectFormDataKey
+                                      key as keyof ProjectFormData
                                     ] as string;
                                     const dateParts = dateString.split("-");
                                     const localDate = new Date(
@@ -756,14 +757,11 @@ export default function ProjectsPage() {
                                       parseInt(dateParts[1]) - 1,
                                       parseInt(dateParts[2])
                                     );
-                                    return localDate.toLocaleDateString(
-                                      "en-US",
-                                      {
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric",
-                                      }
-                                    );
+                                    return localDate.toLocaleDateString("en-US", {
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    });
                                   })()
                                 : `Select ${label.toLowerCase()}`}
                             </span>
@@ -772,9 +770,7 @@ export default function ProjectsPage() {
                           {((key === "start_date" && showStartCalendar) ||
                             (key === "end_date" && showEndCalendar)) && (
                             <CustomCalendar
-                              selectedDate={
-                                formData[key as ProjectFormDataKey] as string
-                              }
+                              selectedDate={formData[key as keyof ProjectFormData] as string}
                               onDateSelect={(date) => {
                                 setFormData({ ...formData, [key]: date });
                                 setShowStartCalendar(false);
@@ -796,27 +792,32 @@ export default function ProjectsPage() {
                               ? "https://example.com"
                               : `Enter ${label.toLowerCase()}`
                           }
-                          accept={type === "file" ? "image/*" : undefined}
-                          value={
-                            type === "file"
-                              ? undefined
-                              : (formData[
-                                  key as ProjectFormDataKey
-                                ] as string) || ""
-                          }
+                          value={(formData[key as keyof ProjectFormData] as string) || ""}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              [key]:
-                                type === "file"
-                                  ? e.target.files?.[0]
-                                  : e.target.value,
+                              [key]: e.target.value,
                             })
                           }
                         />
                       )}
                     </div>
                   ))}
+
+                  {/* Media Upload Section */}
+                  <div className="col-span-full">
+                    <h3 className="text-lg font-semibold text-indigo-300 mb-4">
+                      Project Media
+                    </h3>
+                    <MediaUpload
+                      files={formData.mediaFiles}
+                      onChange={(files) => setFormData({ ...formData, mediaFiles: files })}
+                      existingMedia={editingId ? 
+                        projects.find(p => p.id === editingId)?.media || [] : []}
+                      maxFiles={8}
+                      accept="image/*,video/*"
+                    />
+                  </div>
 
                   <div className="col-span-full flex gap-4 mt-6">
                     <button
@@ -902,17 +903,31 @@ export default function ProjectsPage() {
                     key={project.id}
                     className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-indigo-500/30 rounded-2xl overflow-hidden shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 hover:scale-[1.02] group"
                   >
-                    {project.image_url && (
+                    {/* Media Display */}
+                    {project.media && project.media.length > 0 && (
                       <div className="relative overflow-hidden">
-                        <Image
-                          src={project.image_url}
-                          alt={project.name}
-                          width={400}
-                          height={192}
-                          className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
-                          unoptimized={false}
-                          priority={false}
-                        />
+                        {project.media[0].match(/\.(mp4|webm|ogg)$/i) ? (
+                          <video
+                            src={project.media[0]}
+                            className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
+                            controls
+                          />
+                        ) : (
+                          <Image
+                            src={project.media[0]}
+                            alt={project.name}
+                            width={400}
+                            height={192}
+                            className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
+                            unoptimized={true}
+                            priority={false}
+                          />
+                        )}
+                        {project.media.length > 1 && (
+                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                            +{project.media.length - 1} more
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                       </div>
                     )}
@@ -940,16 +955,13 @@ export default function ProjectsPage() {
                           <CalendarDays size={14} />
                           <span>
                             {(() => {
-                              // Parse start date without timezone conversion
-                              const startDateParts =
-                                project.start_date.split("-");
+                              const startDateParts = project.start_date.split("-");
                               const startDate = new Date(
                                 parseInt(startDateParts[0]),
                                 parseInt(startDateParts[1]) - 1,
                                 parseInt(startDateParts[2])
                               );
 
-                              // Parse end date without timezone conversion
                               const endDateParts = project.end_date.split("-");
                               const endDate = new Date(
                                 parseInt(endDateParts[0]),
@@ -978,7 +990,7 @@ export default function ProjectsPage() {
                           className="flex items-center gap-1 text-sm px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
                         >
                           <FiTrash2 size={14} />
-                          Delete
+                          Deletee
                         </button>
                         {project.site_url && (
                           <a
@@ -993,7 +1005,6 @@ export default function ProjectsPage() {
                         )}
                       </div>
                     </div>
-                    {/* i wanna add the footer component */}
                   </div>
                 ))}
               </div>
@@ -1039,3 +1050,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+
