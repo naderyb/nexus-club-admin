@@ -1,9 +1,8 @@
 // src/app/api/events/route.ts
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import client from "@/lib/db";
 import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
+import cloudinary from "@/lib/cloudinary";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +19,34 @@ function withCORS(response: NextResponse) {
   return response;
 }
 
+// Cloudinary upload helper
+async function uploadToCloudinary(file: File, folder: string): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder,
+          resource_type: "auto", // Auto-detect image/video
+          quality: "auto",
+          fetch_format: "auto",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result!.secure_url);
+        }
+      )
+      .end(buffer);
+  });
+}
+
 // GET: Fetch all events
 export async function GET() {
   try {
     const result = await client.query(
-      "SELECT * FROM public.events ORDER BY date DESC"
+      "SELECT id, title, description, date, location, media FROM public.events ORDER BY date DESC"
     );
     return withCORS(NextResponse.json(result.rows));
   } catch (error) {
@@ -35,9 +57,8 @@ export async function GET() {
   }
 }
 
-// POST: Create new event with multiple file uploads (images and video)
+// POST: Create new event with media uploads
 export async function POST(req: Request) {
-  // Authenticate admin
   const authResult = await authenticateAdmin();
   if (!authResult.authenticated) {
     return createUnauthorizedResponse();
@@ -51,41 +72,53 @@ export async function POST(req: Request) {
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
 
-    const images = formData.getAll("images") as File[];
-    const imageUrls: string[] = [];
+    // Validate required fields
+    if (!title || !date || !location) {
+      return withCORS(
+        NextResponse.json(
+          { error: "Title, date, and location are required" },
+          { status: 400 }
+        )
+      );
+    }
 
-    if (images.length > 0) {
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
+    // Handle media uploads
+    const mediaFiles = formData.getAll("media") as File[];
+    const mediaUrls: string[] = [];
 
-      if (!fs.existsSync(uploadDir)) {
-        console.log("Creating uploads directory...");
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      for (const image of images) {
-        const bytes = await image.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const fileName = `${Date.now()}-${image.name.replace(/\s/g, "-")}`;
-        const filePath = path.join(uploadDir, fileName);
-        console.log(`Saving image to: ${filePath}`);
-        fs.writeFileSync(filePath, buffer);
-        imageUrls.push(`/uploads/${fileName}`);
+    if (mediaFiles.length > 0) {
+      for (const file of mediaFiles) {
+        if (file.size > 0) {
+          try {
+            const url = await uploadToCloudinary(file, "nexus/events");
+            mediaUrls.push(url);
+          } catch (uploadError) {
+            console.error("Error uploading file:", uploadError);
+            // Continue with other files instead of failing completely
+          }
+        }
       }
     }
 
     const query = `
-      INSERT INTO public.events (title, description, date, location, image_urls)
+      INSERT INTO public.events (title, description, date, location, media)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *;
     `;
-    const values = [title, description, date, location, imageUrls];
+    const values = [
+      title,
+      description,
+      date,
+      location,
+      JSON.stringify(mediaUrls),
+    ];
 
     const result = await client.query(query, values);
 
     return withCORS(
       NextResponse.json({
-        message: "Event created",
-        event: result.rows[0],
+        message: "Event created successfully",
+        event: { ...result.rows[0], media: mediaUrls },
       })
     );
   } catch (error) {
@@ -96,9 +129,8 @@ export async function POST(req: Request) {
   }
 }
 
-// PUT: Update an event with multiple image uploads
+// PUT: Update an event
 export async function PUT(req: Request) {
-  // Authenticate admin
   const authResult = await authenticateAdmin();
   if (!authResult.authenticated) {
     return createUnauthorizedResponse();
@@ -113,26 +145,18 @@ export async function PUT(req: Request) {
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
 
-    if (!date || date.trim() === "") {
+    if (!id || !title || !date || !location) {
       return withCORS(
         NextResponse.json(
-          { error: "Date is required and must be valid" },
+          { error: "ID, title, date, and location are required" },
           { status: 400 }
         )
       );
     }
 
-    const images = formData.getAll("images") as File[];
-    let imageUrls: string[] = [];
-
-    if (!id) {
-      return withCORS(
-        NextResponse.json({ error: "Event ID is required" }, { status: 400 })
-      );
-    }
-
+    // Check if event exists and get current media
     const eventCheck = await client.query(
-      "SELECT * FROM public.events WHERE id = $1",
+      "SELECT media FROM public.events WHERE id = $1",
       [id]
     );
 
@@ -142,51 +166,68 @@ export async function PUT(req: Request) {
       );
     }
 
-    if (images.length > 0) {
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
+    // Get existing media or start with empty array
+    let mediaUrls: string[] = [];
+    try {
+      mediaUrls = eventCheck.rows[0].media || [];
+    } catch {
+      mediaUrls = [];
+    }
 
-      if (!fs.existsSync(uploadDir))
-        fs.mkdirSync(uploadDir, { recursive: true });
+    // Handle new media uploads
+    const newMediaFiles = formData.getAll("media") as File[];
+    const replaceMedia = formData.get("replaceMedia") === "true";
 
-      for (const image of images) {
-        const bytes = await image.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const fileName = `${Date.now()}-${image.name.replace(/\s/g, "-")}`;
-        const filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, buffer);
-        imageUrls.push(`/uploads/${fileName}`);
+    if (replaceMedia) {
+      mediaUrls = []; // Clear existing media if replacing
+    }
+
+    if (newMediaFiles.length > 0) {
+      for (const file of newMediaFiles) {
+        if (file.size > 0) {
+          try {
+            const url = await uploadToCloudinary(file, "nexus/events");
+            mediaUrls.push(url);
+          } catch (uploadError) {
+            console.error("Error uploading file:", uploadError);
+          }
+        }
       }
-    } else {
-      imageUrls = eventCheck.rows[0].image_urls;
     }
 
     const query = `
       UPDATE public.events
-      SET title = $1, description = $2, date = $3, location = $4, image_urls = $5
+      SET title = $1, description = $2, date = $3, location = $4, media = $5
       WHERE id = $6
       RETURNING *;
     `;
-    const values = [title, description, date, location, imageUrls, id];
+    const values = [
+      title,
+      description,
+      date,
+      location,
+      JSON.stringify(mediaUrls),
+      id,
+    ];
 
     const result = await client.query(query, values);
 
     return withCORS(
       NextResponse.json({
         message: "Event updated successfully",
-        event: result.rows[0],
+        event: { ...result.rows[0], media: mediaUrls },
       })
     );
   } catch (error) {
     console.error("Error updating event:", error);
     return withCORS(
-      NextResponse.json({ error: "An error occurred" }, { status: 500 })
+      NextResponse.json({ error: "Failed to update event" }, { status: 500 })
     );
   }
 }
 
 // DELETE: Delete an event
 export async function DELETE(req: Request) {
-  // Authenticate admin
   const authResult = await authenticateAdmin();
   if (!authResult.authenticated) {
     return createUnauthorizedResponse();
@@ -195,12 +236,10 @@ export async function DELETE(req: Request) {
   try {
     let id: string | null = null;
 
-    // Try to get ID from JSON body
     try {
       const body = await req.json();
       id = body?.id;
     } catch {
-      // Fallback: try from query params
       const url = new URL(req.url);
       id = url.searchParams.get("id");
     }
@@ -230,7 +269,7 @@ export async function DELETE(req: Request) {
   } catch (error) {
     console.error("Error deleting event:", error);
     return withCORS(
-      NextResponse.json({ error: "An error occurred" }, { status: 500 })
+      NextResponse.json({ error: "Failed to delete event" }, { status: 500 })
     );
   }
 }
