@@ -2,23 +2,45 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Client from "@/lib/db";
-import { writeFile } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
 import { authenticateAdmin, createUnauthorizedResponse } from "@/lib/auth";
-import "dotenv/config";
+import cloudinary from "@/lib/cloudinary";
 
-const dbPort = parseInt(process.env.DB_PORT || "5432", 10);
-if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
-  throw new Error("Invalid database port specified");
+// Cloudinary upload helper
+async function uploadToCloudinary(file: File, folder: string): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder,
+          resource_type: "auto",
+          quality: "auto",
+          fetch_format: "auto",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result!.secure_url);
+        }
+      )
+      .end(buffer);
+  });
 }
 
 export async function GET() {
   try {
     const res = await Client.query(
-      "SELECT * FROM public.projects ORDER BY id DESC"
+      "SELECT id, name, description, status, start_date, end_date, site_url, media FROM public.projects ORDER BY id DESC"
     );
-    return NextResponse.json({ projects: res.rows }, { status: 200 });
+
+    // Parse media JSON for each project
+    const projects = res.rows.map((project) => ({
+      ...project,
+      media: project.media || [],
+    }));
+
+    return NextResponse.json({ projects }, { status: 200 });
   } catch (err) {
     console.error("GET error:", err);
     return NextResponse.json(
@@ -29,7 +51,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  // Authenticate admin
   const authResult = await authenticateAdmin();
   if (!authResult.authenticated) {
     return createUnauthorizedResponse();
@@ -37,15 +58,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const form = await req.formData();
-    console.log("POST form fields:", {
-      name: form.get("name"),
-      description: form.get("description"),
-      status: form.get("status"),
-      start_date: form.get("start_date"),
-      end_date: form.get("end_date"),
-      site_url: form.get("site_url"),
-      image: form.get("image"),
-    });
 
     const name = form.get("name") as string;
     const description = form.get("description") as string;
@@ -53,7 +65,6 @@ export async function POST(req: NextRequest) {
     const start_date = form.get("start_date") as string;
     const end_date = form.get("end_date") as string;
     const site_url = form.get("site_url") as string;
-    const image = form.get("image") as File | null;
 
     if (
       !name ||
@@ -69,19 +80,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let image_url = "";
+    // Handle media uploads
+    const mediaFiles = form.getAll("media") as File[];
+    const mediaUrls: string[] = [];
 
-    if (image && image.size > 0) {
-      const bytes = await image.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const fileName = `${randomUUID()}_${image.name}`;
-      const filePath = path.join(process.cwd(), "public", "uploads", fileName);
-      await writeFile(filePath, buffer);
-      image_url = `/uploads/${fileName}`;
+    if (mediaFiles.length > 0) {
+      for (const file of mediaFiles) {
+        if (file.size > 0) {
+          try {
+            const url = await uploadToCloudinary(file, "nexus/projects");
+            mediaUrls.push(url);
+          } catch (uploadError) {
+            console.error("Error uploading file:", uploadError);
+          }
+        }
+      }
     }
 
     const insertQuery = `
-      INSERT INTO public.projects (name, description, status, start_date, end_date, image_url, site_url)
+      INSERT INTO public.projects (name, description, status, start_date, end_date, site_url, media)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *;
     `;
@@ -91,12 +108,15 @@ export async function POST(req: NextRequest) {
       status,
       start_date,
       end_date,
-      image_url,
       site_url,
+      JSON.stringify(mediaUrls),
     ];
     const result = await Client.query(insertQuery, values);
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json(
+      { ...result.rows[0], media: mediaUrls },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("POST error:", err);
     return NextResponse.json(
@@ -107,7 +127,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  // Authenticate admin
   const authResult = await authenticateAdmin();
   if (!authResult.authenticated) {
     return createUnauthorizedResponse();
@@ -123,20 +142,6 @@ export async function PUT(req: NextRequest) {
     const end_date = form.get("end_date") as string;
     const site_url = form.get("site_url") as string;
 
-    const image = form.get("image") as File | null;
-
-    // Log the form data for debugging
-    console.log({
-      id,
-      name,
-      description,
-      status,
-      start_date,
-      end_date,
-      site_url,
-      image: image ? image.name : null,
-    });
-
     if (
       !id ||
       !name ||
@@ -149,29 +154,56 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    let image_url = "";
+    // Get existing media
+    const projectCheck = await Client.query(
+      "SELECT media FROM public.projects WHERE id = $1",
+      [id]
+    );
 
-    if (image && image.size > 0) {
-      const bytes = await image.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const fileName = `${randomUUID()}_${image.name}`;
-      const filePath = path.join(process.cwd(), "public", "uploads", fileName);
-      await writeFile(filePath, buffer);
-      image_url = `/uploads/${fileName}`;
+    if (projectCheck.rowCount === 0) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    let mediaUrls: string[] = [];
+    try {
+      mediaUrls = projectCheck.rows[0].media || [];
+    } catch {
+      mediaUrls = [];
+    }
+
+    // Handle new media uploads
+    const newMediaFiles = form.getAll("media") as File[];
+    const replaceMedia = form.get("replaceMedia") === "true";
+
+    if (replaceMedia) {
+      mediaUrls = [];
+    }
+
+    if (newMediaFiles.length > 0) {
+      for (const file of newMediaFiles) {
+        if (file.size > 0) {
+          try {
+            const url = await uploadToCloudinary(file, "nexus/projects");
+            mediaUrls.push(url);
+          } catch (uploadError) {
+            console.error("Error uploading file:", uploadError);
+          }
+        }
+      }
     }
 
     const updateQuery = `
-        UPDATE public.projects SET
-        name = $1,
-        description = $2,
-        status = $3,
-        start_date = $4,
-        end_date = $5,
-        image_url = $6,
-        site_url = $7
-        WHERE id = $8
-        RETURNING *;
-      `;
+      UPDATE public.projects SET
+      name = $1,
+      description = $2,
+      status = $3,
+      start_date = $4,
+      end_date = $5,
+      site_url = $6,
+      media = $7
+      WHERE id = $8
+      RETURNING *;
+    `;
 
     const values = [
       name,
@@ -179,21 +211,16 @@ export async function PUT(req: NextRequest) {
       status,
       start_date,
       end_date,
-      image_url,
       site_url,
+      JSON.stringify(mediaUrls),
       id,
     ];
-
     const result = await Client.query(updateQuery, values);
-    console.log("Update row count:", result.rowCount);
-    if (result.rowCount === 0) {
-      return NextResponse.json(
-        { error: "No project updated" },
-        { status: 404 }
-      );
-    }
 
-    return NextResponse.json(result.rows[0], { status: 200 });
+    return NextResponse.json(
+      { ...result.rows[0], media: mediaUrls },
+      { status: 200 }
+    );
   } catch (err) {
     console.error("PUT error:", err);
     return NextResponse.json(
@@ -204,16 +231,13 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  // Authenticate admin
   const authResult = await authenticateAdmin();
   if (!authResult.authenticated) {
     return createUnauthorizedResponse();
   }
 
   try {
-    // Log incoming request body
     const { name } = await req.json();
-    console.log("Received DELETE request with name:", name);
 
     if (!name) {
       return NextResponse.json(
@@ -224,8 +248,7 @@ export async function DELETE(req: NextRequest) {
 
     const deleteQuery =
       "DELETE FROM public.projects WHERE name = $1 RETURNING *";
-    const values = [name];
-    const result = await Client.query(deleteQuery, values);
+    const result = await Client.query(deleteQuery, [name]);
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
