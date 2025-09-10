@@ -49,7 +49,9 @@ const roles = [
   "president",
   "vice-president",
   "general secretary",
-  "master financier", // ✅ Added new role
+  "finance respo", 
+  "finance assistante",
+  "event manager",
   "respo com",
   "respo logistics",
   "respo marketing",
@@ -67,7 +69,9 @@ const roleColors: { [key: string]: string } = {
   president: "from-red-600 to-red-700",
   "vice-president": "from-orange-600 to-orange-700",
   "general secretary": "from-blue-600 to-blue-700",
-  "master financier": "from-emerald-600 to-emerald-700", // ✅ Added color for new role
+  "finance respo": "from-emerald-600 to-emerald-700",
+  "finance assistante": "from-teal-500 to-teal-700",     
+  "event manager": "from-fuchsia-500 to-fuchsia-700",     
   "respo com": "from-purple-600 to-purple-700",
   "respo logistics": "from-green-600 to-green-700",
   "respo marketing": "from-pink-600 to-pink-700",
