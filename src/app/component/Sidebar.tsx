@@ -38,6 +38,7 @@ export function Sidebar({
     { icon: Calendar, label: "Events", href: "/nx-admin/events" },
     { icon: FolderOpen, label: "Projects", href: "/nx-admin/projects" },
     { icon: UserPlus, label: "Newbies", href: "/nx-admin/newbies" },
+    { icon: Building2, label: "SEE", href: "/nx-admin/SEE" },
   ];
 
   const sidebarClass = `fixed top-0 left-0 h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 z-50 transition-all duration-300 ${
